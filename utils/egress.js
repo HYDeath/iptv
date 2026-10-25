@@ -34,8 +34,11 @@ function loadState() {
 function agentFor(address) {
   let agent = agents.get(address)
   if (!agent) {
-    agent = new Agent({ connect: { localAddress: address } })
+    // localAddress 必须放在 Agent 顶层。写进 connect 会被 undici 用空值盖掉，
+    // 套接字仍走默认路由，2 号和 3 号看起来切换了，包却还从主 IP 出去。
+    agent = new Agent({ localAddress: address, connect: { family: 4 } })
     agents.set(address, agent)
+    printYellow(`[出口] 已绑定套接字到 ${address}`)
   }
   return agent
 }
@@ -68,8 +71,10 @@ const pool = createEgressPool({
 })
 
 if (pool.enabled()) {
-  const listed = pool.snapshot().addresses.map((address, index) => `${index + 1}号 ${address}`).join('，')
-  printYellow(`[出口] 央视频按顺序使用 ${listed}；全部被拒后静默 ${config.quietMs / 3600000} 小时再探测`)
+  const snap = pool.snapshot()
+  const listed = snap.addresses.map((address, index) => `${index + 1}号 ${address}`).join('，')
+  const quiet = snap.quietUntil > Date.now() ? `，静默到 ${new Date(snap.quietUntil).toLocaleString('zh-CN', { timeZone: 'Asia/Shanghai' })}` : ''
+  printYellow(`[出口] 央视频按顺序使用 ${listed}；当前 ${snap.active + 1}号 ${snap.address}${quiet}；全部被拒后静默 ${config.quietMs / 3600000} 小时再探测`)
 }
 
 export function rememberEgress(response, address) {
