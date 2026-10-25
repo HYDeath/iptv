@@ -300,7 +300,7 @@ export function createResolver({
       for (let attempt = 0; attempt < 2; attempt++) {
         try {
           const { urls } = await request(channel, ctx)
-          const manifest = await select(urls, ctx)
+          const manifest = await select(urls, { ...ctx, reportEgressBlock: true })
           if (epoch === generation) remember(ref, urls, manifest, Number(ctx.now ?? Date.now()) + CACHE_MS)
           return manifest
         } catch (error) {

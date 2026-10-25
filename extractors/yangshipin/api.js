@@ -185,9 +185,12 @@ export async function selectWorkingManifest(urls, options = {}) {
       timeout.done()
     }
   }
-  // allForbidden：主备全是 403，即本机出口被 CDN 限流的特征，由解析层据此冷却
+  // allForbidden：主备全是 403。同一张已用过的票再取清单也会 403，那是正常限频，不能换出口。
+  // 只有换到新票之后仍然主备都 403，才说明这个出口被封。
   const allForbidden = urls.length > 0 && forbidden === urls.length
-  if (allForbidden && fetchImpl === proxyAwareFetch && blockedEgress) await reportCctvBlocked(blockedEgress)
+  if (allForbidden && options.reportEgressBlock && fetchImpl === proxyAwareFetch && blockedEgress) {
+    await reportCctvBlocked(blockedEgress)
+  }
   throw Object.assign(new Error(`主、备用 CDN 均不可用（${errors.join('；')}）`), {
     allForbidden,
   })
