@@ -1,5 +1,6 @@
 import { execFileSync } from 'node:child_process'
 import { ProxyAgent, fetch as undiciFetch } from 'undici'
+import { dispatcherFor, prepareCctvEgress, rememberEgress } from './egress.js'
 
 let detected = false
 let proxyUrl = ''
@@ -51,7 +52,15 @@ function isLoopback(raw) {
 }
 
 /** 与 ProxyAgent 来自同一 undici 版本，避免不同 Node 版本内置 fetch 的协议不兼容。 */
-export function proxyAwareFetch(url, options = {}) {
-  const dispatcher = isLoopback(url) ? undefined : systemProxyDispatcher()
-  return undiciFetch(url, { ...options, ...(dispatcher ? { dispatcher } : {}) })
+export async function proxyAwareFetch(url, options = {}) {
+  const decision = await prepareCctvEgress(url)
+  if (decision.silent) {
+    throw Object.assign(new Error('央视频出口全部被拒，静默期内不再请求'), { code: 'EGRESS_QUIET', localOnly: true })
+  }
+  const dispatcher = decision.address
+    ? dispatcherFor(decision.address)
+    : (isLoopback(url) ? undefined : systemProxyDispatcher())
+  const response = await undiciFetch(url, { ...options, ...(dispatcher ? { dispatcher } : {}) })
+  if (decision.address) rememberEgress(response, decision.address)
+  return response
 }

@@ -7,6 +7,8 @@ node_modules
 # 个人配置文件
 external-sources.json
 system-config.json
+egress.json
+egress-state.json
 epg-sources.json
 users.json
 

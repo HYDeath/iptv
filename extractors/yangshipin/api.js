@@ -1,4 +1,6 @@
 import { createCKey, clientConstants } from './ckey.js'
+import { proxyAwareFetch } from '../../utils/systemProxy.js'
+import { BLOCK_STATUSES, egressOf, reportCctvBlocked } from '../../utils/egress.js'
 
 export const API_URL = 'https://bkliveinfo.ysp.cctv.cn/'
 export const UPSTREAM_HEADERS = Object.freeze({
@@ -44,7 +46,7 @@ function collectUrls(payload) {
 }
 
 export async function requestPlayUrls(channel, options = {}) {
-  const fetchImpl = options.fetchImpl || fetch
+  const fetchImpl = options.fetchImpl || proxyAwareFetch
   const ticket = createCKey(channel.channelId, { now: options.now })
   const query = new URLSearchParams({
     atime: '120',
@@ -95,7 +97,12 @@ export async function requestPlayUrls(channel, options = {}) {
       signal: timeout.signal,
       headers: { 'User-Agent': 'qqlive', Accept: 'application/json' },
     })
-    if (!response.ok) throw new Error(`官方接口 HTTP ${response.status}`)
+    if (!response.ok) {
+      if (fetchImpl === proxyAwareFetch && BLOCK_STATUSES.has(response.status)) {
+        await reportCctvBlocked(egressOf(response))
+      }
+      throw Object.assign(new Error(`官方接口 HTTP ${response.status}`), { status: response.status })
+    }
     const payload = await response.json()
     if (Number(payload?.iretcode) !== 0) throw new Error(payload?.errinfo || `官方接口返回 ${payload?.iretcode ?? '未知错误'}`)
     const urls = collectUrls(payload)
@@ -131,7 +138,9 @@ function mediaSegments(text, base) {
 
 async function fetchManifest(url, fetchImpl, signal) {
   const response = await fetchImpl(url, { redirect: 'follow', signal, headers: UPSTREAM_HEADERS })
-  if (!response.ok) throw Object.assign(new Error(`清单 HTTP ${response.status}`), { status: response.status })
+  if (!response.ok) {
+    throw Object.assign(new Error(`清单 HTTP ${response.status}`), { status: response.status, egressAddress: egressOf(response) })
+  }
   const text = await response.text()
   if (!text.trimStart().startsWith('#EXTM3U')) throw new Error('响应不是 HLS 清单')
   return { text, url: response.url || url }
@@ -153,9 +162,10 @@ async function fetchManifest(url, fetchImpl, signal) {
 export const MANIFEST_TIMEOUT_MS = 3_000
 
 export async function selectWorkingManifest(urls, options = {}) {
-  const fetchImpl = options.fetchImpl || fetch
+  const fetchImpl = options.fetchImpl || proxyAwareFetch
   const errors = []
   let forbidden = 0
+  let blockedEgress = ''
   for (const url of urls) {
     const timeout = withTimeout(Number(options.timeoutMs || MANIFEST_TIMEOUT_MS))
     try {
@@ -167,6 +177,7 @@ export async function selectWorkingManifest(urls, options = {}) {
       return { ...manifest, sourceUrl: url }
     } catch (error) {
       if (error?.status === 403) forbidden++
+      if (!blockedEgress && error?.egressAddress) blockedEgress = error.egressAddress
       let host = '未知节点'
       try { host = new URL(url).hostname } catch { /* 保留默认文案 */ }
       errors.push(`${host}: ${error?.name === 'AbortError' ? '超时' : error?.message || error}`)
@@ -175,7 +186,9 @@ export async function selectWorkingManifest(urls, options = {}) {
     }
   }
   // allForbidden：主备全是 403，即本机出口被 CDN 限流的特征，由解析层据此冷却
+  const allForbidden = urls.length > 0 && forbidden === urls.length
+  if (allForbidden && fetchImpl === proxyAwareFetch && blockedEgress) await reportCctvBlocked(blockedEgress)
   throw Object.assign(new Error(`主、备用 CDN 均不可用（${errors.join('；')}）`), {
-    allForbidden: urls.length > 0 && forbidden === urls.length,
+    allForbidden,
   })
 }
