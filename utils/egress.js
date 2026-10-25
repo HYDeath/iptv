@@ -47,9 +47,11 @@ async function probeAddress(address) {
   const channel = CHANNELS.find(item => item.id === 'cctv1')
   try {
     const { urls } = await requestPlayUrls(channel, { fetchImpl, timeoutMs: 8000 })
-    await selectWorkingManifest(urls.slice(0, 1), { fetchImpl, timeoutMs: 8000 })
+    // 单个 CDN 回 403 只说明这一条入口不行，备用入口仍可能可用。主备都 403 才算这个出口还被封。
+    await selectWorkingManifest(urls, { fetchImpl, timeoutMs: 8000 })
     return true
   } catch {
+    // 主备都 403、取票被拒或超时，都不能把这个出口当成已恢复。
     return false
   }
 }
