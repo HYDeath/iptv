@@ -352,9 +352,11 @@ export function createResolver({
     renew(key, ctx)
     served.set(key, entry.tail)
     entry.sent = true
-    // libVLC 另拿一份清单视图（见 libvlc-view.js）。垫片由本机提供，所以只在外壳给了
-    // selfBase（清单直出）时才换；改写不了的清单 libvlcPlaylist 回 null，照旧下发原样。
-    const forLibvlc = ctx.selfBase && LIBVLC_UA.test(String(ctx.client?.ua || ''))
+    // NekoVideo 的 HlsRelay 固定用 VLC/3.0.21 拉清单，再按分片文件名里的序号拼接。
+    // libvlc 视图把 MEDIA-SEQUENCE 乘 2，垫片序号变成 35 亿，比真实分片文件名里的序号更大，
+    // 拼接器只会下发空包垫片，FFmpeg 读 10 秒后报 -138，画面没有帧。
+    // 所以这里一律下发原始清单。真实 VLC 少了垫片，仍能播正片。
+    const forLibvlc = false && ctx.selfBase && LIBVLC_UA.test(String(ctx.client?.ua || ''))
     return {
       url: entry.url,
       manifestText: (forLibvlc && libvlcPlaylist(entry.plain, `${ctx.selfBase}${FILLER_PATH}`)) || entry.text,

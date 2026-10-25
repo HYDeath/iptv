@@ -1090,7 +1090,7 @@ check('libVLC 视图：改写不了的清单回 null，调用方下发原样', (
   assert.match(libvlcPlaylist(`${base}#EXTINF:5,\r\nhttps://a.ysp.cctv.cn/T/s-7.ts?x=1\r\n`, pad), /s-7\.ts\?x=1\n#EXTINF:0\.010,\nhttp:\/\/h\/ysp-pad\.ts\n$/, '行尾 \\r 归一、带参数的地址照认')
 })
 
-await checkAsync('libVLC 视图只给 VLC 内核且外壳给了本机地址时才换，其他情况下发原样', async () => {
+await checkAsync('VLC 内核也下发原始清单，不插入空包垫片', async () => {
   const text = '#EXTM3U\n#EXT-X-MEDIA-SEQUENCE:100\n#EXT-X-TARGETDURATION:8\n#EXTINF:7.440,\nhttps://a.ysp.cctv.cn/T/2024078203-100.ts\n'
   const resolver = createResolver({
     request: async () => ({ urls: ['https://a.ysp.cctv.cn/T/live.m3u8'] }),
@@ -1098,7 +1098,8 @@ await checkAsync('libVLC 视图只给 VLC 内核且外壳给了本机地址时�
   })
   const vlc = { ua: 'VLC/4.0.0-dev LibVLC/4.0.0-dev' }
   const viewed = await resolver.resolve('ysp-cctv1', { now: 0, client: vlc, selfBase: 'http://192.168.1.2:1905/pass' })
-  assert.match(viewed.manifestText, /#EXTINF:7\.430,\nhttps:\/\/a\.ysp\.cctv\.cn\/T\/2024078203-100\.ts\n#EXTINF:0\.010,\nhttp:\/\/192\.168\.1\.2:1905\/pass\/ysp-pad\.ts\n$/)
+  assert.equal(viewed.manifestText, text)
+  assert.equal(viewed.manifestText.includes('ysp-pad'), false)
   for (const ctx of [
     { client: vlc },
     { client: { ua: 'AppleCoreMedia/1.0.0.23A344 (Apple TV; U; CPU OS 27_0 like Mac OS X; zh_cn)' }, selfBase: 'http://h' },
@@ -1411,7 +1412,7 @@ await checkAsync('顶上去的旧清单同样按播放器给视图：VLC 内核�
   broken = true
   const stale = await resolver.resolve('ysp-cctv4', { ...vlc, now: 5000 })
   assert.equal(stale.manifestText, live.manifestText)
-  assert.match(stale.manifestText, /ysp-pad\.ts\n$/)
+  assert.equal(stale.manifestText.includes('ysp-pad'), false)
   const plain = await resolver.resolve('ysp-cctv4', { now: 9000 })
   assert.equal(plain.manifestText, livePlaylist(400), '其他播放器拿原样')
 })
@@ -1497,7 +1498,7 @@ await checkAsync('断流恢复后接回跳过的片，对着上一次真正发�
   const plain = await resolver.resolve('ysp-cctv4', { now: 25_000 })
   assert.deepEqual(segmentsOf(plain.manifestText).map(entry => entry.seq), [917, 918, 919, 920, 921])
   const vlc = await resolver.resolve('ysp-cctv4', { now: 26_000, client: { ua: LIBVLC }, selfBase: 'http://192.168.1.2:1905' })
-  assert.equal(firstSeq(vlc), 919 * 2 - 2, 'VLC 视图照官方原样的三片来')
+  assert.equal(firstSeq(vlc), 917, 'VLC 内核拿到的也是原始清单')
   broken = false
   assert.equal(firstSeq(await resolver.resolve('ysp-cctv4', { now: 30_000 })), 917)
   await pause()

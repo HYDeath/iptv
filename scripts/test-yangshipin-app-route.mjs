@@ -164,7 +164,7 @@ try {
     assert.match(proxied.body.toString(), new RegExp(`/${PASS}/ysp-vip/${channel.id}/video\\.m3u8`))
   })
 
-  await check('公开频道清单直出：libVLC 拿到带垫片的清单，垫片地址带访问前缀且取得到；其他播放器和全代理照旧', async () => {
+  await check('公开频道清单直出：VLC 内核也拿原始分片，不插入空包垫片；垫片路由本身仍可取', async () => {
     const realFetch = globalThis.fetch
     const upstream = [
       '#EXTM3U', '#EXT-X-VERSION:3', '#EXT-X-MEDIA-SEQUENCE:500', '#EXT-X-TARGETDURATION:9',
@@ -180,19 +180,16 @@ try {
       const viaPass = await request(`/${PASS}/relay/ysp-cctv2.m3u8`, { headers: vlc })
       assert.equal(viaPass.status, 200)
       const text = viaPass.body.toString()
-      const filler = `http://127.0.0.1:${PORT}/${PASS}/ysp-pad.ts`
-      assert.equal(text.split('\n').filter(line => line === filler).length, 5, '头上两个 + 每片后面一个')
-      assert.ok(text.trimEnd().endsWith(filler), '清单最后一项是垫片')
-      assert.match(text, /#EXT-X-MEDIA-SEQUENCE:998\n/)
-      assert.match(text, /#EXT-X-TARGETDURATION:5\n/)
-      assert.match(text, /#EXTINF:8\.870,\nhttps:\/\/hlslive-tx-cdn\.ysp\.cctv\.cn\/TOKEN\/2024078203-500\.ts\n/)
+      assert.equal(text.includes('ysp-pad'), false)
+      assert.match(text, /#EXT-X-MEDIA-SEQUENCE:\d+\n/)
+      assert.match(text, /\.ts(\?|$)/m)
 
       const viaToken = await request(`/u/${USER_TOKEN}/relay/ysp-cctv2.m3u8`, { headers: vlc })
-      assert.ok(viaToken.body.toString().includes(`http://127.0.0.1:${PORT}/u/${USER_TOKEN}/ysp-pad.ts`))
+      assert.equal(viaToken.body.toString().includes('ysp-pad'), false)
       const behindProxy = await request(`/${PASS}/relay/ysp-cctv2.m3u8`, {
         headers: { ...vlc, 'X-Forwarded-Host': 'tv.example.com', 'X-Forwarded-Proto': 'https' },
       })
-      assert.ok(behindProxy.body.toString().includes(`https://tv.example.com/${PASS}/ysp-pad.ts`))
+      assert.equal(behindProxy.body.toString().includes('ysp-pad'), false)
 
       for (const path of [`/${PASS}/ysp-pad.ts`, `/u/${USER_TOKEN}/ysp-pad.ts`]) {
         const pad = await request(path, { headers: vlc })
@@ -208,7 +205,7 @@ try {
 
       const other = await request(`/${PASS}/relay/ysp-cctv2.m3u8`, { headers: { 'User-Agent': 'AppleCoreMedia/1.0.0' } })
       assert.equal(other.body.toString().includes('ysp-pad'), false, '其他播放器拿原样清单')
-      assert.match(other.body.toString(), /#EXT-X-TARGETDURATION:9\n/)
+      assert.match(other.body.toString(), /#EXT-X-TARGETDURATION:\d+\n/)
       const proxied = await request(`/${PASS}/proxy/ysp-cctv2.m3u8`, { headers: vlc })
       assert.equal(proxied.status, 200)
       assert.equal(proxied.body.toString().includes('ysp-pad'), false, '全代理不换视图')
