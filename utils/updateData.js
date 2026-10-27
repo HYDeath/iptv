@@ -456,7 +456,7 @@ async function updateTV(hours, options = {}) {
       // 咪咕频道无 sourceId、以 pID 隐式识别为 'migu'。播放器输出前会剥离该内部属性。
       const ownSourceId = channelItem.sourceId || (!isBuiltIn && !isExternal && !isExtractor ? 'migu' : '')
       const allSourceIds = [...new Set([ownSourceId, ...(channelItem.sourceIds || [])].filter(Boolean))]
-      // 多源用分号分隔——EXTINF 频道名按「第一个逗号」解析，属性值里出现逗号会破坏频道名提取
+      // 多源用分号分隔（早先回读按「第一个逗号」切频道名，属性值不能带逗号；沿用至今）
       const sourceAttr = allSourceIds.length ? ` source-ids="${allSourceIds.join(';')}"` : ''
 
       // 频道级播放选项：防盗链源要靠 #EXTVLCOPT 把 Referer 等带给播放器，

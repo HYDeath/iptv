@@ -13,8 +13,8 @@
  *
  * 注意：这些值来自用户添加的第三方订阅（不可信输入），要原样写回一个换行、引号敏感的
  * 格式里，因此：模式过白名单、天数只收正整数、模板含引号 / 空白 / 控制字符者整条拒收
- * （与 channelOpts 的 opt 消毒同理）；含逗号的也拒收——interface.txt 回读时频道名按
- * 「第一个逗号」切（与 source-ids 改用分号同一个原因），模板里一个逗号就会把频道名撑坏；
+ * （与 channelOpts 的 opt 消毒同理）。逗号放行：运营商 IPTV 的回放地址常写成
+ * `rrsip=A,rrsip=B`（issue #200），interface.txt 回读时跳过引号内的逗号再切频道名；
  * 模板里也不许出现 `${replace}`——输出订阅时它会被替换成本机地址连同访问密码 / 用户令牌，
  * 写进第三方模板等于把凭据发给第三方。
  */
@@ -68,7 +68,7 @@ function cleanDays(raw) {
 }
 
 /**
- * 清洗回看模板：含引号、逗号、换行、控制字符、`${replace}` 或超长者整条拒收，返回 undefined。
+ * 清洗回看模板：含引号、换行、控制字符、`${replace}` 或超长者整条拒收，返回 undefined。
  *
  * 含换行的整条丢弃而不是剔掉换行后留用——那会把注入内容粘成一条语法合法、
  * 值却是垃圾的模板，回看静默失败。宁可丢掉，让频道回退为继承订阅头的确定状态。
@@ -82,7 +82,7 @@ function cleanDays(raw) {
 function cleanSource(raw) {
   if (typeof raw !== 'string') return undefined
   if (raw.length > MAX_SOURCE_LENGTH) return undefined
-  if (/[",\r\n\u0000-\u001f\u007f-\u009f]/.test(raw)) return undefined
+  if (/["\r\n\u0000-\u001f\u007f-\u009f]/.test(raw)) return undefined
   if (hasReplaceToken(raw)) return undefined
   const value = raw.trim()
   if (!value || /\s/.test(value) || value.endsWith('=')) return undefined

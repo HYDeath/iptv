@@ -3193,7 +3193,7 @@
         .source-badge, .status-badge, .external-mode-badge, .mode-badge,
         .instant-badge, .login-state-badge, .channel-tag { padding: 2px 7px; border-radius: 5px; font-weight: 500; }
         .source-badge.builtin, .source-badge.account, .source-badge.live,
-        .source-badge.standard, .source-badge.overseas,
+        .source-badge.standard, .source-badge.overseas, .source-badge.institution,
         .external-mode-badge.fetch, .external-mode-badge.direct, .external-mode-badge.subscription,
         .mode-badge, .mode-badge.mode-direct, .mode-badge.mode-subscription {
             color: var(--ui-text-secondary);
@@ -4764,7 +4764,7 @@
                 <div class="settings-editor-card" style="margin-top: 4px;">
                     <div>
                         <div style="font-size:16px; font-weight:600; color:#333;">用户管理（一人一源）</div>
-                        <div class="system-config-hint">给每个家人 / 朋友生成独立的源地址 <code>/u/&lt;令牌&gt;/m3u</code>，可单独停用、泄露可追溯，且<strong>令牌进不了本后台</strong>。不新增用户则对现有链接零影响。</div>
+                        <div class="system-config-hint">给每个家人 / 朋友生成独立的源地址 <code>/u/&lt;令牌&gt;/interface.m3u</code>，可单独停用、泄露可追溯，且<strong>令牌进不了本后台</strong>。不新增用户则对现有链接零影响。</div>
                     </div>
                     <div style="margin-top:12px;">
                         <button type="button" class="btn btn-success" onclick="openUserModal()">＋ 新增用户</button>
@@ -4837,7 +4837,7 @@
                                 <strong>当前版本</strong>
                             </div>
                             <div class="about-version-body">
-                                <span id="versionText">v4.49.2</span>
+                                <span id="versionText">v4.51.2</span>
                                 <button class="btn btn-sm" onclick="checkUpdate()" id="checkUpdateBtn">检查更新</button>
                             </div>
                             <div id="updateInfo" class="about-update-info" style="display: none;"></div>
@@ -6086,6 +6086,12 @@
                     badge: '海外',
                     description: ['面向大陆以外的频道，默认关闭，需要时手动打开。', { mark: '能不能看取决于网络：海外频道由播放器直连，看播放设备；澳门等后续其他独立模块还要部署的机器能连到大陆以外。' }],
                 },
+                {
+                    id: 'institution',
+                    title: '高校与场馆',
+                    badge: '高校场馆',
+                    description: ['高校、文化场馆、会议论坛、典礼及拍卖机构的官方公开活动直播与录像回放，默认关闭，需要时手动打开。', { mark: '画面经部署的机器转发，会占用服务器带宽；佳士得、富艺斯、易北爱乐还要部署的机器能访问境外网站。' }],
+                },
             ];
             return categories;
         }
@@ -6160,7 +6166,8 @@
 
             // 分类按钮：数量跟着上面的开关筛选走；某类里有模块抓取失败或凭证失效，按钮上挂红点
             const categoryOf = m => m.category || 'standard';
-            const present = categories.filter(category => modules.some(m => categoryOf(m) === category.id));
+            // 高校与场馆先统一分类；尚未接入模块时也保留入口，明确展示接入状态。
+            const present = categories.filter(category => category.id === 'institution' || modules.some(m => categoryOf(m) === category.id));
             const active = present.find(category => category.id === extractorCategory) || present[0];
             const needsAttention = m => {
                 const h = m.health || {};
@@ -6217,9 +6224,11 @@
                     </div>
                     ${activeModules.length
                         ? modulesHtml(activeModules)
-                        : `<div class="extractor-filter-empty">${extractorFilter === 'on'
-                            ? '这一类的模块都关着。切到「已关闭」或「全部」，勾选「启用」即可打开。'
-                            : '这一类没有关闭的模块。'}</div>`}
+                        : `<div class="extractor-filter-empty">${active.id === 'institution' && !modules.some(m => categoryOf(m) === active.id)
+                            ? '暂未接入高校与场馆模块。'
+                            : extractorFilter === 'on'
+                                ? '这一类的模块都关着。切到「已关闭」或「全部」，勾选「启用」即可打开。'
+                                : '这一类没有关闭的模块。'}</div>`}
                 </section>`;
 
             renderExtractorDetail();
@@ -6941,11 +6950,12 @@
             if (!box) return;
             const users = usersConfig.users || [];
             if (!users.length) {
-                box.innerHTML = '<div class="system-config-hint" style="margin:0;">还没有用户。点页面上方「＋ 新增用户」，新增后会得到一个独立的 /u/&lt;令牌&gt;/m3u 源地址，发给对应的人即可。</div>';
+                box.innerHTML = '<div class="system-config-hint" style="margin:0;">还没有用户。点页面上方「＋ 新增用户」，新增后会得到一个独立的 /u/&lt;令牌&gt;/interface.m3u 源地址，发给对应的人即可。</div>';
                 return;
             }
             box.innerHTML = users.map(u => {
-                const m3u = userLink(u.token, 'm3u');
+                // 带 .m3u 后缀，与顶部订阅栏一致：IINA、飞牛影视等按后缀认订阅，/m3u 会被当成普通文件打不开
+                const m3u = userLink(u.token, 'interface.m3u');
                 const pb = userLink(u.token, 'playback.xml');
                 const txt = userLink(u.token, 'txt');
                 const last = u.lastSeenAt ? new Date(u.lastSeenAt).toLocaleString() : '从未';
@@ -13293,7 +13303,7 @@ if(success){
             closeInlinePlayer();
             dialog.dataset.url = url;
             document.getElementById('inlinePlayerTitle').textContent = name || '播放';
-            inlinePlayerStatus('正在连接直播流…');
+            inlinePlayerStatus('正在连接媒体…');
             dialog.showModal();
             try {
                 if (/\.flv(?:[?#]|$)/i.test(url)) {

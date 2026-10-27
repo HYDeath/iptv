@@ -32,8 +32,10 @@ import { enableExtractors } from "../config.js"
 
 const CONFIG_FILE = 'extractors.json'
 const CACHE_FILE = 'extractor-cache.json'
-// 官方入口持续 WAF 405，2026-10-22 移除。加载或导入旧备份时同步清掉配置与缓存。
-const RETIRED_MODULE_IDS = ['beidou']
+// 北斗官方入口持续 WAF 405，2026-10-22 移除；江门直播 CDN 持续 502，2026-10-27 暂时移除。
+// 佳士得部署后多条回放不可用，2026-10-27 按用户要求移除。
+// 加载或导入旧备份时同步清掉这些模块的配置、频道缓存与告警状态。
+const RETIRED_MODULE_IDS = ['beidou', 'jiangmen', 'inst-christies']
 
 // 单个模块一轮的墙钟上限。模块内部也该自己设超时，这层是兜底——外部源那边
 // 整轮没有任何时间上限，一个慢源能把后面全拖住。

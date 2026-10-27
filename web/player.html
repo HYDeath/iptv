@@ -268,7 +268,7 @@
                 
                 const dp = new DPlayer({
                     container: document.getElementById('dplayer'),
-                    live: !isDirectMedia,
+                    live: !isDirectMedia && !/^\[回放\]/.test(channelName),
                     autoplay: true,
                     screenshot: true,
                     hotkey: true,

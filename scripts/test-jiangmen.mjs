@@ -64,7 +64,7 @@ test('官方错误、重定向或过大响应不会当成可播媒体', async ()
   await assert.rejects(readOfficial(ORIGIN, { maxBytes: 1, fetchImpl: async () => new Response('too big') }), /大小限制/)
 })
 
-test('主项目只输出广东一套正式电视，配官方台标、稳定 ref 与禁用回看', async () => {
+test('保留的江门模块可独立解析正式电视，主项目已暂时移除播放路由', async () => {
   const result = await jiangmen.fetch({}, { fetchImpl: async () => Response.json(info) })
   assert.equal(result.groups[0].name, '广东')
   assert.equal(result.groups[0].dataList.length, 1)
@@ -74,7 +74,7 @@ test('主项目只输出广东一套正式电视，配官方台标、稳定 ref 
   assert.equal(result.groups[0].dataList[0].catchup, 'none')
   assert.equal(jiangmen.channelHlsMode, 'proxy')
   assert.equal(jiangmen.defaultEnabled ?? true, true)
-  assert.equal(resolverFor('jiangmen-1'), jiangmen)
+  assert.equal(resolverFor('jiangmen-1'), null)
   assert.equal(claimsRef('jiangmen-BRXH74E'), false)
   await assert.rejects(jiangmen.fetch({}, { fetchImpl: async () => Response.json({ channels: info.channels.slice(1) }) }))
 })

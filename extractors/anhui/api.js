@@ -175,7 +175,10 @@ export function parseChannelConfig(text, channel) {
   if (!meta || String(meta.id) !== channel.articleId || meta.title !== channel.rawName) {
     throw new Error('安徽频道详情与请求频道不符')
   }
-  if (Number(meta.status) !== 30 || Number(meta.PayType) !== 0) {
+  // 公开详情接口可能省略 status；缺少该字段不代表下架。仍拒绝明确的非发布状态，
+  // 并要求 PayType 明确为免费，不能把缺少权限信息当成开放直播。
+  const explicitlyUnpublished = Object.hasOwn(meta, 'status') && Number(meta.status) !== 30
+  if (explicitlyUnpublished || ![0, '0'].includes(meta.PayType)) {
     throw new Error('安徽频道未发布或未开放免费直播')
   }
   const custom = parseObject(meta.AppCustomParams, '频道配置')

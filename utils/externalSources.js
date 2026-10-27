@@ -353,7 +353,8 @@ async function fetchAndParseM3u(subscriptionUrl, { userAgent, timeoutMs = 15000 
   }
 
   // 所有线路都失败：给出可操作的提示，而不是单条被截断的 node-fetch 报错
-  throw new Error(`所有线路均无法获取订阅，请检查服务器能否访问 GitHub/CDN（必要时配置代理或更换可访问的订阅地址）。已尝试: ${failures.join('，')}`)
+  // 订阅拉取不走代理，别在提示里让用户去配代理；服务端拉不到时给能当场用的出路
+  throw new Error(`所有线路均无法获取订阅，请检查服务器能否访问这个地址；访问不了的话，可更换能访问的订阅地址，或在电脑上下载后改用「本地文件 / 粘贴」导入。已尝试: ${failures.join('，')}`)
 }
 
 const EXTERNAL_SOURCES_PATH = dataPath('external-sources.json')

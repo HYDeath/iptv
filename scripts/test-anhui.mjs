@@ -52,7 +52,7 @@ const detailPayload = (channel, movie = {}, meta = {}) => JSON.stringify({ state
 } } })
 
 /** 记录每次请求的地址与请求头，按路径回放配置接口与清单。 */
-function fakeUpstream({ manifestStatuses = [], configPayload = CONFIG_PAYLOAD, detailConfig = () => ({}) } = {}) {
+function fakeUpstream({ manifestStatuses = [], configPayload = CONFIG_PAYLOAD, detailConfig = () => ({}), detailMeta = () => ({}) } = {}) {
   const calls = []
   let sequence = 100
   const fetchImpl = async (url, options = {}) => {
@@ -60,7 +60,7 @@ function fakeUpstream({ manifestStatuses = [], configPayload = CONFIG_PAYLOAD, d
     if (String(url).startsWith(ANHUI_CONFIG_API)) return response(configPayload, 200, { 'content-type': 'application/json' })
     if (String(url).startsWith(ANHUI_DETAIL_API)) {
       const channel = CHANNELS.find(c => new URL(url).pathname.endsWith('/' + c.articleId))
-      return response(detailPayload(channel, detailConfig(channel)))
+      return response(detailPayload(channel, detailConfig(channel), detailMeta(channel)))
     }
     if (/\/live\/\/[a-z\d]+\.m3u8\?txSecret=/.test(String(url))) {
       // 两个官方 CDN 的 UA 规则不同；清单回源不附加防盗链头。
@@ -159,6 +159,26 @@ check('官方详情决定当前域名与流 ID，校验频道身份、发布状�
     { liveDomain: 'https://seclive.ahsx.ahtv.cn/live/?redirect=evil' }, { liveId: '../other' }, { txFlag: '0' }]) {
     assert.throws(() => parseChannelConfig(detailPayload(channel, config), channel))
   }
+})
+
+await checkAsync('公开详情省略 status 时免费频道仍可解析，明确下架或权限不明仍拒绝', async () => {
+  const channel = CHANNELS[0]
+  const movie = { liveDomain: 'https://seclive.ahsx.ahtv.cn/live/', liveId: 'ws20261019' }
+  for (const PayType of [0, '0']) {
+    assert.deepEqual(parseChannelConfig(detailPayload(channel, movie, { status: undefined, PayType }), channel), movie)
+  }
+  for (const meta of [
+    { status: 10, PayType: 0 }, { status: null, PayType: 0 },
+    { status: undefined, PayType: 1 }, { status: undefined, PayType: undefined },
+    { status: undefined, PayType: null }, { status: undefined, PayType: false },
+  ]) {
+    assert.throws(() => parseChannelConfig(detailPayload(channel, movie, meta), channel), /未发布|免费/)
+  }
+  const upstream = fakeUpstream({ detailConfig: () => movie, detailMeta: () => ({ status: undefined }) })
+  const result = await createResolver({ fetchImpl: upstream.fetchImpl }).resolve(channel.ref)
+  assert.match(result.url, /^https:\/\/seclive\.ahsx\.ahtv\.cn\/live\/\/ws20261019\.m3u8/)
+  assert.match(result.manifestText, /^#EXTM3U/)
+  assert.equal(upstream.manifestCalls().length, 1, '合法的公开详情必须能继续走到媒体清单')
 })
 
 check('只放行官方媒体域名，拒绝下线占位与外域', () => {

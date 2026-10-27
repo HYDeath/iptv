@@ -775,12 +775,12 @@ check('省市广电模块卡片只显示地区名，不带平台品牌', () => {
     'gdsport-events': '广东体育赛事', 'sichuan-cities': '四川市州',
     anhui: '安徽', chongqing: '重庆', sichuan: '四川', chengdu: '成都', cztv: '浙江', dalian: '大连', fjtv: '福建', gansu: '甘肃', gdtv: '广东', gxtv: '广西',
     gztv: '广州', hbtv: '湖北', hebtv: '河北', heilongjiang: '黑龙江', hnntv: '海南', hntv: '河南',
-    iqilu: '山东', hangzhou: '杭州', ningbo: '宁波', jiaxing: '嘉兴', taizhou: '台州', shaoxing: '绍兴', jlntv: '吉林', jstv: '江苏', jxntv: '江西', kankanews: '上海', jiangmen: '江门', 'meizhou-hakka': '梅州', mgtv: '湖南', njtv: '南京', nmtv: '内蒙古',
+    iqilu: '山东', hangzhou: '杭州', ningbo: '宁波', jiaxing: '嘉兴', taizhou: '台州', shaoxing: '绍兴', jlntv: '吉林', jstv: '江苏', jxntv: '江西', kankanews: '上海', 'meizhou-hakka': '梅州', mgtv: '湖南', njtv: '南京', nmtv: '内蒙古',
     'quanzhou-minnan': '泉州', 'quanzhou-county': '晋江、石狮', putian: '莆田', ningde: '宁德', wuxi: '无锡', yangzhou: '扬州', nantong: '南通', yancheng: '盐城',
     ningxia: '宁夏', qinghai: '青海', qingdao: '青岛', qtv: '青岛景观', shaanxi: '陕西', shanxi: '山西', sztv: '深圳', tianjin: '天津',
     xinjiang: '新疆', xizang: '西藏', yunnan: '云南', tdm: '澳门',
   }
-  const groupOverrides = { 'sichuan-cities': '四川', chengdu: '四川', 'gdsport-events': '广东', dalian: '辽宁', gztv: '广东', sztv: '广东', hangzhou: '浙江', ningbo: '浙江', jiaxing: '浙江', taizhou: '浙江', shaoxing: '浙江', jiangmen: '广东', 'meizhou-hakka': '广东', 'quanzhou-minnan': '福建', 'quanzhou-county': '福建', putian: '福建', ningde: '福建', wuxi: '江苏', yangzhou: '江苏', nantong: '江苏', yancheng: '江苏', njtv: '江苏', qingdao: '山东', qtv: '山东' }
+  const groupOverrides = { 'sichuan-cities': '四川', chengdu: '四川', 'gdsport-events': '广东', dalian: '辽宁', gztv: '广东', sztv: '广东', hangzhou: '浙江', ningbo: '浙江', jiaxing: '浙江', taizhou: '浙江', shaoxing: '浙江', 'meizhou-hakka': '广东', 'quanzhou-minnan': '福建', 'quanzhou-county': '福建', putian: '福建', ningde: '福建', wuxi: '江苏', yangzhou: '江苏', nantong: '江苏', yancheng: '江苏', njtv: '江苏', qingdao: '山东', qtv: '山东' }
   for (const [id, name] of Object.entries(expectedNames)) {
     assert.equal(getModule(id)?.name, name, `${id} 卡片标题应只保留地区名`)
     assert.equal(
@@ -998,16 +998,28 @@ try {
       assert.equal(modules.find(module => module.id === id)?.category, 'live', `${id} 应归入网络直播平台`)
     }
     // 默认关、由用户自己打开的：「海外」小节那几个，加上频道量大、只有本地少数人看的山东市县（#196 作者拍板）
-    // 和市县台的各省模块（guangdianyun-*，同样作者拍板）
+    // 和市县台的各省模块（guangdianyun-*，同样作者拍板）；高校与场馆全部默认关（v4.51.1 作者拍板）。
     assert.deepEqual(
       listModules().filter(module => module.defaultEnabled === false).map(module => module.id).sort(),
       [
         ...modules.filter(module => module.category === 'overseas').map(module => module.id),
+        ...modules.filter(module => module.category === 'institution').map(module => module.id),
         'shandong-counties',
         ...modules.filter(module => module.id.startsWith('guangdianyun-')).map(module => module.id),
       ].sort(),
     )
     assert.deepEqual(modules.filter(module => module.category === 'overseas').map(module => module.id).sort(), ['overseas', 'tdm'])
+    const institutionIds = [
+      'inst-xjtu', 'inst-jlu', 'inst-chnmuseum', 'inst-shqyg', 'inst-zjwhg', 'inst-culturecloud',
+      'inst-fudan', 'inst-bnu', 'inst-hust', 'inst-gdwhg', 'inst-hnwhg', 'inst-gzdjy', 'inst-ccom',
+      'inst-shlib', 'inst-cdstm', 'inst-stvf', 'inst-siff', 'inst-zgc', 'inst-shforum',
+      'inst-phillips', 'inst-elb',
+    ]
+    assert.deepEqual(modules.filter(module => module.category === 'institution').map(module => module.id).sort(), institutionIds.sort(),
+      '21 家机构各自注册为独立模块，统一归入高校与场馆')
+    for (const id of institutionIds) assert.equal(modules.find(module => module.id === id)?.category, 'institution', id)
+    assert.equal(new Set(modules.filter(module => module.category === 'institution').map(module => module.name)).size, 21,
+      '机构显示名应独立，不合并成跨机构模块')
   })
 
   check('模块地区透传给后台：省台、地市台、景观归到同一地区，全国性的不归', () => {
@@ -1054,13 +1066,16 @@ try {
       '用户明确保存的关闭态不能被默认值覆盖')
   })
 
-  check('★ 海外频道、澳门、山东市县、市县台默认关闭，用户打开后保持打开；没点过的开关不落盘', () => {
+  check('★ 海外频道、高校与场馆、澳门、山东市县、市县台默认关闭，用户打开后保持打开；没点过的开关不落盘', () => {
     const optIn = listModules().filter(module => module.defaultEnabled === false).map(module => module.id)
     const gdy = optIn.filter(id => id.startsWith('guangdianyun-'))
     assert.ok(gdy.length >= 20, '市县台各省模块都默认关闭')
     assert.equal(listModules().filter(module => module.id.startsWith('guangdianyun-')).length, gdy.length)
-    assert.deepEqual(optIn.filter(id => !id.startsWith('guangdianyun-')).sort(), ['overseas', 'shandong-counties', 'tdm'],
-      '默认关的只有面向海外的两个、山东市县和市县台各省；新增要想清楚')
+    const inst = optIn.filter(id => id.startsWith('inst-'))
+    assert.equal(inst.length, 21, '高校与场馆 21 家都默认关闭')
+    assert.deepEqual(optIn.filter(id => !id.startsWith('guangdianyun-') && !id.startsWith('inst-')).sort(),
+      ['overseas', 'shandong-counties', 'tdm'],
+      '默认关的只有海外两个、山东市县、市县台各省和高校与场馆；新增要想清楚')
     const manager = newManager(undefined, { modules: {}, masterSwitchRetired: true })
     for (const id of optIn) assert.equal(manager.isModuleEnabled(getModule(id)), false, id)
     manager.setModuleEnabled('overseas', true)

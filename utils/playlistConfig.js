@@ -232,6 +232,20 @@ export function saveConfig(profile, config) {
 }
 
 /**
+ * 取 EXTINF 行的频道名：引号外的第一个逗号之后。
+ * 属性值里可以有逗号（回看模板 `rrsip=A,rrsip=B`，issue #200；外部源频道名写进
+ * tvg-id="…"），按第一个逗号切会把属性残渣当成频道名。
+ */
+function extinfName(line) {
+  let quoted = false
+  for (let i = 0; i < line.length; i++) {
+    if (line[i] === '"') quoted = !quoted
+    else if (line[i] === ',' && !quoted) return line.slice(i + 1)
+  }
+  return ''
+}
+
+/**
  * 解析 interface.txt 文件
  */
 export function parseInterfaceTxt() {
@@ -265,15 +279,14 @@ export function parseInterfaceTxt() {
         const groupMatch = line.match(/group-title="([^"]*)"/)
         const sourceIdsMatch = line.match(/source-ids="([^"]*)"/)   // 源归属（issue #29/#68），内部属性
         const catchup = parseCatchupAttrs(line)   // 频道级回看声明（issue #119 / #190）
-        const nameMatch = line.match(/,(.+)$/)
-        
+        const channelName = extinfName(line)
+
         // 播放地址不一定紧跟 EXTINF——防盗链频道中间夹着 #EXTVLCOPT，
         // 要连同 opts 一起收下，并把游标推到地址行，否则 opt 行会被当成播放地址。
         const { opts, urlIndex } = collectOptsUntilUrl(lines, i)
 
-        if (groupMatch && nameMatch && urlIndex !== -1) {
+        if (groupMatch && channelName && urlIndex !== -1) {
           const groupName = groupMatch[1]
-          const channelName = nameMatch[1]
           const url = lines[urlIndex].trim()
           
           const tvgName = tvgNameMatch ? tvgNameMatch[1] : channelName
@@ -307,7 +320,7 @@ export function parseInterfaceTxt() {
             url: url,
             originalGroup: groupName,
             // 源归属（issue #29/#68 按档过滤）：来自哪些源（migu / bi:<id> / ext:<id>，去重并集）。
-            // 分号分隔（属性值不能含逗号——频道名按第一个逗号解析）；旧数据无该属性 → 空数组=不过滤。
+            // 分号分隔（见 updateData 写入处）；旧数据无该属性 → 空数组=不过滤。
             sourceIds: sourceIdsMatch ? sourceIdsMatch[1].split(';').filter(Boolean) : [],
             ...catchup,
             // 频道级播放选项（#EXTVLCOPT）：无则不带该字段，保持旧频道对象形状不变

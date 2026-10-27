@@ -714,8 +714,8 @@ export function clearResolveCache() {
  * 引号换成单引号是因为 EXTINF 的属性值是双引号包裹的（见 updateData.js 的
  * tvg-id="${channelItem.name}"）——一个裸双引号会把整行语法撑坏，
  * 这与 utils/externalSources.js:11-18 处理 issue #84 时的顾虑是同一个。
- * 逗号同理：回读端按「第一个逗号」切频道名（playlistConfig.js 的 /,(.+)$/），
- * 主播标题里一个 ASCII 逗号（如 "Day2,小组赛"）会把 tvg 属性从中间切开、
+ * 逗号同理：按「第一个逗号」切频道名的解析器（issue #200 之前的 interface.txt 回读
+ * 就是这样），遇到主播标题里的 ASCII 逗号（如 "Day2,小组赛"）会把 tvg 属性从中间切开、
  * 频道名变成带引号残渣的垃圾串。
  */
 function sanitizeText(text) {

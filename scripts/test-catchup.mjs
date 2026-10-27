@@ -16,7 +16,8 @@
  *  - 零回归：没有声明的频道不长出字段、输出逐字节不变、照旧继承订阅头；
  *    模块的 catchup="none"（issue #119）照旧；
  *  - 消毒：模式过白名单、天数只收正整数、模板含引号 / 换行 / 控制字符 / ${replace}
- *    或超长者整条拒收（订阅是不可信输入）。
+ *    或超长者整条拒收（订阅是不可信输入）；逗号放行，回读 interface.txt 时频道名
+ *    不被属性值里的逗号切坏（issue #200）。
  *
  * 运行： node scripts/test-catchup.mjs   （或 npm test）
  */
@@ -43,7 +44,9 @@ console.log('第三方订阅回看声明贯通测试 (issue #190)')
 
 // issue #190 报告里的原始写法
 const PLAYSEEK = '?playseek=${(b)yyyyMMddHHmmss}-${(e)yyyyMMddHHmmss}'
-const MIGU_HEADER = '#EXTM3U x-tvg-url="${replace}/playback.xml" catchup="append" catchup-source="?playbackbegin=${(b)yyyyMMddHHmmss}&playbackend=${(e)yyyyMMddHHmmss}"'
+// issue #200：运营商 IPTV 回放地址，rrsip 用逗号列出多台服务器
+const RRSIP = 'rtsp://iptv.example/PLTV/88888905/224/3221227218/ch_0.smil?rrsip=10.0.0.1,rrsip=10.0.0.2&zoneoffset=480&playseek=${(b)yyyyMMddHHmmss}-${(e)yyyyMMddHHmmss}'
+const MIGU_HEADER ='#EXTM3U x-tvg-url="${replace}/playback.xml" catchup="append" catchup-source="?playbackbegin=${(b)yyyyMMddHHmmss}&playbackend=${(e)yyyyMMddHHmmss}"'
 
 try {
   // ---- 解析 ----
@@ -156,12 +159,13 @@ try {
     }
   })
 
-  await check('消毒：模板含逗号拒收，免得回读 interface.txt 时把频道名撑坏', () => {
-    // parseInterfaceTxt 按「第一个逗号」切频道名（source-ids 也因此用分号分隔）
-    assert.equal(sanitizeCatchup({ catchupSource: '?start=${start},${end}' }).catchupSource, undefined)
-    const [ch] = parsePlaylistContent('#EXTINF:-1 catchup="append" catchup-source="?a=1,2" group-title="g",A\nhttp://h/a.m3u8')
-    assert.equal(ch.name, 'A')
-    assert.equal(renderCatchupAttrs(ch), ' catchup="append"')
+  await check('消毒：模板里的逗号放行，频道名、分组不受影响（issue #200 原始写法）', () => {
+    assert.equal(sanitizeCatchup({ catchupSource: RRSIP }).catchupSource, RRSIP)
+    const [ch] = parsePlaylistContent(`#EXTINF:-1 tvg-id="广东卫视333" tvg-logo="" catchup="default" catchup-days="7" catchup-source="${RRSIP}" group-title="卫视",广东卫视\nrtp://239.77.0.1:5146`)
+    assert.equal(ch.name, '广东卫视')
+    assert.equal(ch.group, '卫视')
+    assert.deepEqual(sanitizeCatchup(ch), { catchup: 'default', catchupDays: 7, catchupSource: RRSIP })
+    assert.equal(renderCatchupAttrs(ch), ` catchup="default" catchup-days="7" catchup-source="${RRSIP}"`)
   })
 
   await check('消毒：模板里的 ${replace} 拒收，访问密码 / 令牌不外泄给第三方', () => {
@@ -357,6 +361,11 @@ try {
     'http://h/catchup.m3u8',
     '#EXTINF:-1 tvg-id="普通台" tvg-name="普通台" tvg-logo="" source-ids="ext:cu000001" group-title="回看",普通台',
     'http://h/plain.m3u8',
+    `#EXTINF:-1 tvg-id="广东卫视" tvg-name="广东卫视" tvg-logo="" source-ids="ext:cu000001"${renderCatchupAttrs({ catchup: 'default', catchupDays: 7, catchupSource: RRSIP })} group-title="回看",广东卫视`,
+    'rtp://239.77.0.1:5146',
+    // 外部源频道名带逗号时，updateData 照样把它写进 tvg-id="…"
+    '#EXTINF:-1 tvg-id="Day2,小组赛" tvg-name="Day2,小组赛" tvg-logo="" source-ids="ext:cu000001" group-title="回看",Day2,小组赛',
+    'http://h/day2.m3u8',
     `#EXTINF:-1 tvg-id="CCTV1" tvg-name="CCTV1" tvg-logo="" source-ids="ysp"${renderCatchupAttrs({ catchup: 'none' })} group-title="央视频",CCTV1`,
     '${replace}/relay/ysp-cctv1.m3u8',
     '#EXTINF:-1 tvg-id="CCTV2" tvg-name="CCTV2" tvg-logo="" source-ids="migu" group-title="央视",CCTV2',
@@ -374,6 +383,14 @@ try {
     assert.deepEqual(sanitizeCatchup(byName['CCTV2']), {})
   })
 
+  await check('回读 interface.txt：属性值里的逗号不切坏频道名（issue #200）', () => {
+    const byName = Object.fromEntries(parseInterfaceTxt().flatMap(g => g.channels).map(c => [c.name, c]))
+    assert.deepEqual(sanitizeCatchup(byName['广东卫视']), { catchup: 'default', catchupDays: 7, catchupSource: RRSIP })
+    assert.equal(byName['广东卫视'].originalGroup, '回看')
+    assert.equal(byName['Day2,小组赛']?.url, 'http://h/day2.m3u8')
+    assert.equal(byName['Day2,小组赛'].tvgName, 'Day2,小组赛')
+  })
+
   // 默认档无配置 → 原样直出；renamed 档有配置 → parseInterfaceTxt → applyConfig → generateM3u8 重生成
   writeFileSync(join(TMP, 'my-playlist-config.renamed.json'), JSON.stringify({ groupRenameMap: { 回看: '第三方' } }))
   for (const profile of ['default', 'renamed']) {
@@ -385,6 +402,8 @@ try {
         assert.ok(lines[0].includes('catchup-source="?playbackbegin=${(b)yyyyMMddHHmmss}&playbackend=${(e)yyyyMMddHHmmss}"'), '订阅头的咪咕模板不变，${(b)…} 不被 ${replace} 替换误伤')
         assert.ok(lines[0].includes('x-tvg-url="http://localhost:1905/u/test-token/playback.xml"'))
         assert.ok(extinf('回看台').includes(` catchup="append" catchup-days="7" catchup-source="${PLAYSEEK}" `), extinf('回看台'))
+        assert.ok(extinf('广东卫视').includes(` catchup="default" catchup-days="7" catchup-source="${RRSIP}" `), extinf('广东卫视'))
+        assert.ok(extinf('Day2,小组赛')?.includes('tvg-name="Day2,小组赛"'), '频道名带逗号的台不丢')
         assert.ok(!/catchup/.test(extinf('普通台')), '没声明的频道照旧继承订阅头')
         assert.ok(extinf('CCTV1').includes(' catchup="none" '))
         assert.ok(!/catchup/.test(extinf('CCTV2')))
