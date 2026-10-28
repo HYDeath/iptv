@@ -3292,6 +3292,7 @@
         .system-config-item { min-width: 0; padding: 18px; border: 1px solid var(--ui-line); border-radius: 12px; background: var(--ui-surface); box-shadow: none; }
         .system-config-item label { margin-bottom: 8px; color: var(--ui-text); font-size: 13px; font-weight: 500; }
         .system-config-hint { margin-top: 8px; color: var(--ui-muted); font-size: 12px; line-height: 1.8; overflow-wrap: anywhere; }
+        .system-config-hint.sys-env-hint { margin-top: 4px; color: var(--ui-warning); }
         .system-config-actions { gap: 8px; margin-top: 4px; flex-wrap: wrap; justify-content: flex-end; }
         .settings-panel .system-config-actions .btn-primary { color: var(--ui-text-secondary); border-color: var(--ui-line-strong); background: var(--ui-surface); }
         .settings-panel .system-config-actions .btn-primary:hover { color: var(--ui-text); background: var(--ui-surface-strong); }
@@ -3332,7 +3333,7 @@
         .user-guide-card { padding: 14px 16px !important; border-color: var(--ui-line) !important; border-radius: 10px !important; background: var(--ui-surface-soft) !important; color: var(--ui-text-secondary) !important; }
         .settings-panel a:not(.btn) { color: #2563eb; text-decoration: none; }
         .settings-panel a:not(.btn):hover { text-decoration: underline; }
-        .settings-panel :is(#envOverrideWarning, #userPassWarning) { border: 1px solid var(--ui-warning-line) !important; border-radius: 10px !important; background: var(--ui-warning-soft) !important; color: var(--ui-warning) !important; }
+        .settings-panel #userPassWarning { border: 1px solid var(--ui-warning-line) !important; border-radius: 10px !important; background: var(--ui-warning-soft) !important; color: var(--ui-warning) !important; }
         .settings-panel .system-config-hint[style*="#d4380d"] { padding: 10px 12px; border-radius: 9px; color: var(--ui-warning) !important; background: var(--ui-warning-soft); }
         #aliasList > div:not(.system-config-hint),
         #groupRuleList > div:not(.system-config-hint),
@@ -4649,7 +4650,6 @@
                 </div>
 
                 <div class="settings-subpanel active" id="settingsSub0">
-                <div id="envOverrideWarning" style="display: none; margin: 10px 0; padding: 12px 14px; background: #fff7e6; border: 1px solid #ffd591; border-left: 4px solid #fa8c16; border-radius: 6px; color: #874d00; font-size: 13px; line-height: 1.7;"></div>
 
                 <section class="sys-section">
                     <div class="sys-section-head">
@@ -4666,11 +4666,13 @@
                             <label>公网地址</label>
                             <input type="text" id="sysHost" oninput="setSaveDirty('sysconfig')" placeholder="http://example.com:xxxx">
                             <div class="system-config-hint">选填。填 <code>http(s)://…</code> 完整地址时<strong>原样使用</strong>（不写端口即 80/443，适合内网穿透/反向代理）；只填 ip/域名则自动补 http:// 和上方的服务端口</div>
+                            <div class="system-config-hint sys-env-hint" data-env-field="host" hidden>docker-compose 里设了 <code>mhost</code>：清空保存后仍按它生效，要去掉请改 compose 后重启容器。</div>
                         </div>
                         <div class="system-config-item">
                             <label>访问密码 <span class="sys-badge is-address" title="保存后后台和订阅地址会变，页面会自动跳到新地址">改后地址会变</span></label>
                             <input type="text" id="sysPass" oninput="setSaveDirty('sysconfig')" placeholder="留空表示无密码">
                             <div class="system-config-hint">设置后访问格式：http://ip:port/密码/...</div>
+                            <div class="system-config-hint sys-env-hint" data-env-field="pass" hidden>docker-compose 里设了 <code>mpass</code>：清空保存后仍按它生效，要去掉请改 compose 后重启容器。</div>
                         </div>
                         <div class="system-config-item">
                             <label>管理页面路径 <span class="sys-badge is-address" title="保存后后台和订阅地址会变，页面会自动跳到新地址">改后地址会变</span></label>
@@ -9511,41 +9513,17 @@
             document.getElementById('sysAdminPath').value = systemConfig.adminPath || 'admin';
             document.getElementById('sysProgramInterval').value = systemConfig.programInfoUpdateInterval || '8';
             document.getElementById('sysEnableDisplayNameUnify').checked = systemConfig.enableDisplayNameUnify === true;
-            renderEnvOverrideWarning();
+            renderEnvHints();
         }
 
-        // 提示：哪些项是被 docker-compose 环境变量控制的（此处修改/清空可能不生效，需改 compose）
-        function renderEnvOverrideWarning() {
-            const box = document.getElementById('envOverrideWarning');
-            if (!box) return;
-            const labels = {
-                port: '端口', host: '公网地址',
-                pass: '访问密码',
-                programInfoUpdateInterval: '更新间隔', refreshToken: 'token刷新', adminPath: '管理页面路径',
-            };
+        // 公网地址 / 访问密码由 docker-compose 环境变量设置时，在输入框下提示：这两项清空保存后
+        // 会回退到 mhost / mpass（config.js 里是 `||` 兜底）。端口、管理路径、更新间隔保存时
+        // 总会写入非空值，环境变量只在第一次保存前起作用，不提示。
+        function renderEnvHints() {
             const overrides = systemConfig.envOverrides || {};
-            const names = Object.keys(overrides).filter(k => overrides[k]).map(k => labels[k] || k);
-            const parts = [];
-            if (names.length > 0) {
-                parts.push(
-                    '⚠️ 以下配置由 <strong>docker-compose 环境变量</strong> 设置：<strong>' + names.join('、') + '</strong><br>' +
-                    '在此填入新值可临时覆盖，但<strong>清空后保存会回退到环境变量的值</strong>（环境变量为兜底）。' +
-                    '要彻底修改或移除，请改 <code>docker-compose.yml</code> 里对应的 <code>m*</code> 变量后重启容器。'
-                );
-            }
-            if (systemConfig.blankModeEnv) {
-                parts.push(
-                    '已通过环境变量 <code>mblank</code> 开启<strong>空白模式</strong>：咪咕 / 内置单频道源 / 内置订阅源默认关闭。' +
-                    '可在上方单独勾选并保存以覆盖（保存后以你的勾选为准）。'
-                );
-            }
-            if (parts.length === 0) {
-                box.style.display = 'none';
-                box.innerHTML = '';
-                return;
-            }
-            box.style.display = 'block';
-            box.innerHTML = parts.join('<hr style="border:none;border-top:1px solid #ffd591;margin:8px 0">');
+            document.querySelectorAll('[data-env-field]').forEach(el => {
+                el.hidden = !overrides[el.dataset.envField];
+            });
         }
 
         // 初始化咪咕账号获取Bookmarklet
