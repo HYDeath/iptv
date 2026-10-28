@@ -216,6 +216,7 @@ const PLAYER_ASSETS = Object.freeze({
 })
 // 固定的品牌图标；与播放器资源一样支持密码前缀和反向代理子路径。
 const ICON_ASSETS = Object.freeze({
+  '/icon-512.png': ['icon-512.png', 'image/png'],
   '/favicon.ico': ['favicon.ico', 'image/x-icon'],
   '/favicon.svg': ['favicon.svg', 'image/svg+xml'],
   '/apple-touch-icon.png': ['apple-touch-icon.png', 'image/png'],
