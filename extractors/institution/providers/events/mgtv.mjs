@@ -144,14 +144,31 @@ export async function discover({ limit = 8, ...options } = {}) {
   };
 }
 
-export async function resolve(item, options = {}) {
+function videoIdOf(item) {
   const match = /^mgtv-(\d{1,12})$/.exec(String(item?.id || ''));
   if (!match) throw new Error('芒果活动引用不合法，或该直播类型尚未验收');
-  const videoId = match[1];
-  const rows = await listRows(options);
-  const row = rows.replay.find(row => String(row.jumpId) === videoId);
-  if (!row) throw new Error('节目不在当前芒果官方活动目录的已支持范围');
-  if (/VIP|会员|付费|购买/i.test(String(row.rightCorner || ''))) throw new Error(`官方目录权益已变更：${row.rightCorner}`);
+  return match[1];
+}
+
+// 已验收场次按 ID 直接查官方播放信息，不依赖活动目录的排序和翻页：
+// 目录按新到旧排，新活动一多，已验收场次就会被挤出前几条或前三页。
+export async function lookup(seeds, options = {}) {
+  const items = [], blocked = [];
+  for (const seed of seeds) {
+    try {
+      const videoId = videoIdOf(seed);
+      const { data } = await videoInfo(videoId, options);
+      const reason = restrictionFor(data);
+      const item = { id: seed.id, provider: id, title: String(data.info.partName || '').trim(), page: `https://www.mgtv.com/s/${videoId}.html`, kind: 'replay', videoId };
+      if (reason) blocked.push({ ...item, reason });
+      else items.push({ ...item, duration: Number(data.info.duration), access: 'public-full' });
+    } catch (error) { blocked.push({ id: seed.id, title: seed.title, reason: error.message }); }
+  }
+  return { items, blocked };
+}
+
+export async function resolve(item, options = {}) {
+  const videoId = videoIdOf(item);
   const page = `https://www.mgtv.com/s/${videoId}.html`;
   const headers = { 'User-Agent': UA, Referer: page, Origin: 'https://www.mgtv.com' };
   const { data, tk2 } = await videoInfo(videoId, { ...options, headers });

@@ -25,12 +25,28 @@ export function createEventAdapter(source, seeds = verified.filter(item => item.
   return {
     provider: { id: source.id }, resolve,
     async discover(options = {}) {
-      const result = await source.discover({ ...options, limit: 24 })
+      const result = source.lookup
+        ? await source.lookup(seeds, options)
+        : await source.discover({ ...options, limit: 24 })
       const items = [], notes = ['首批仅收录已逐条播放验收的完整活动回放；新增场次须验证后加入。登录、付费、试看和加密内容不收录。']
+      const failures = []
       for (const item of result.items || []) {
         if (!fingerprints.has(fingerprint(item))) continue
         try { items.push(await resolve(item.id, options)) }
-        catch { notes.push(`${item.title}：当前官方权限或播放链路未通过检查`) }
+        catch (error) {
+          notes.push(`${item.title}：当前官方权限或播放链路未通过检查`)
+          failures.push(`${item.title}：${error.message}`)
+        }
+      }
+      // 只收已验收场次，一条都没通过多半是官网临时故障或限流。返回空目录会让主项目
+      // 用空结果覆盖缓存、频道从订阅里消失，所以抛错保留上一轮缓存，原因写进健康状态。
+      if (seeds.length && !items.length) {
+        for (const entry of result.blocked || []) {
+          if (identities.has(entry.id)) failures.push(`${entry.title}：${entry.reason}`)
+        }
+        failures.push(...(result.notes || []).filter(note => /HTTP|失败|不可用|超时/.test(note)))
+        const reasons = failures.length ? `：${failures.slice(0, 3).join('；')}` : '，官方目录本轮没有返回这些场次'
+        throw new Error(`${seeds.length} 场已验收活动本轮全部未通过检查${reasons}`.slice(0, 300))
       }
       return { items, notes }
     },

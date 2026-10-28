@@ -5,6 +5,7 @@ import * as smartedu from '../extractors/institution/providers/smartedu.mjs'
 import * as weibo from '../extractors/institution/providers/events/weibo.mjs'
 import * as movie1905 from '../extractors/institution/providers/events/movie1905.mjs'
 import { restrictionFor, validateFullManifest } from '../extractors/institution/providers/events/mgtv.mjs'
+import * as mgtv from '../extractors/institution/providers/events/mgtv.mjs'
 import { createEventAdapter } from '../extractors/institution/providers/events/index.js'
 import { createMediaGateway } from '../extractors/institution/media.js'
 const fixture = name => readFileSync(new URL(`./fixtures/official-events/${name}`, import.meta.url), 'utf8')
@@ -77,17 +78,70 @@ test('芒果真实免费完整权益允许默认trialtime，但排除付费、�
 })
 
 test('活动接入层只发布通过验收且仍与官方目录一致的场次，播放地址不进入目录缓存', async () => {
-  const seed = seeds[0]
+  const [seed, other] = seeds.filter(item => item.provider === 'mgtv')
   let current = { ...seed }, resolved = 0
   const adapter = createEventAdapter({ id: seed.provider,
-    discover: async () => ({ items: [current, { ...seed, id: 'new-unverified' }] }),
+    discover: async () => ({ items: [current, other, { ...seed, id: 'new-unverified' }] }),
     resolve: async () => { resolved++; return { url: 'https://official.example.com/index.m3u8?token=temporary', allowedHosts: ['official.example.com'], kind: seed.kind } },
-  }, [seed])
-  assert.equal((await adapter.discover()).items.length, 1)
-  assert.equal(resolved, 1)
+  }, [seed, other])
+  assert.equal((await adapter.discover()).items.length, 2)
+  assert.equal(resolved, 2)
   current = { ...seed, title: '另一场活动' }
-  assert.equal((await adapter.discover()).items.length, 0)
+  assert.deepEqual((await adapter.discover()).items.map(item => item.id), [other.id])
   await assert.rejects(adapter.resolve('unverified'))
+})
+
+test('微博、1905、芒果官网全部失败时抛错并带上原因，供主项目保留上一轮缓存', async () => {
+  const fetchImpl = async () => new Response('temporary failure', { status: 503 })
+  for (const source of [weibo, movie1905, mgtv]) {
+    await assert.rejects(createEventAdapter(source).discover({ fetchImpl }), /全部未通过检查：.*503/, source.id)
+  }
+  const silent = createEventAdapter({ id: 'mgtv', discover: async () => ({ items: [] }) }, seeds.filter(item => item.provider === 'mgtv'))
+  await assert.rejects(silent.discover(), /没有返回这些场次/)
+})
+
+test('芒果已验收场次按ID直接查官方播放信息，取流也不读活动目录，不会被新活动挤掉', async () => {
+  const body = json('mgtv.json'), hosts = []
+  const mgtvSeeds = seeds.filter(item => item.provider === 'mgtv')
+  const lookupFetch = async url => {
+    const target = new URL(url)
+    hosts.push(target.hostname)
+    const seed = mgtvSeeds.find(item => item.id === `mgtv-${target.searchParams.get('video_id')}`)
+    return Response.json({ code: 200, data: { ...body, info: { ...body.info, partName: `${seed.title} ` } } })
+  }
+  const adapter = createEventAdapter({ id: 'mgtv', lookup: mgtv.lookup,
+    resolve: async () => ({ url: 'https://pcvideo.titan.mgtv.com/index.m3u8', allowedHosts: ['*.mgtv.com'], kind: 'replay' }),
+  }, mgtvSeeds)
+  assert.deepEqual((await adapter.discover({ fetchImpl: lookupFetch })).items.map(item => item.id), mgtvSeeds.map(item => item.id))
+  assert.deepEqual([...new Set(hosts)], ['pcweb.api.mgtv.com'])
+  hosts.length = 0
+  const media = await mgtv.resolve(mgtvSeeds.find(item => item.id === 'mgtv-23744531'), { fetchImpl: async url => {
+    const target = new URL(url)
+    hosts.push(target.hostname)
+    if (target.pathname === '/player/video') return Response.json({ code: 200, data: { ...body, atc: { pm2: 'fixture' } } })
+    if (target.pathname === '/player/getSource') return Response.json({ code: 200, data: { stream: [{ url: '/dispatch/fixture', vip: '0', videoFormat: 'H264', def: 3 }], stream_domain: ['https://web-disp.titan.mgtv.com'] } })
+    if (target.pathname === '/dispatch/fixture') return Response.json({ status: 'ok', info: 'https://pcvideo.titan.mgtv.com/fixture/index.m3u8' })
+    return new Response('#EXTM3U\n#EXTINF:4936,\npart.ts\n#EXT-X-ENDLIST\n')
+  } })
+  assert.equal(media.kind, 'replay')
+  assert.ok(!hosts.includes('pwlc.bz.mgtv.com'))
+})
+
+test('直播主清单下的子清单访问即续期，轮询超过1小时不返回410；没人访问的引用照常过期', async contextTest => {
+  let now = Date.now()
+  contextTest.mock.method(Date, 'now', () => now)
+  const master = '#EXTM3U\n#EXT-X-STREAM-INF:BANDWIDTH=1000\nhigh.m3u8\n#EXT-X-STREAM-INF:BANDWIDTH=500\nlow.m3u8\n'
+  const child = '#EXTM3U\n#EXT-X-TARGETDURATION:4\n#EXT-X-MEDIA-SEQUENCE:1\n#EXTINF:4,\npart.ts\n'
+  const item = { id: 'live', kind: 'live', url: 'https://official.example.com/master.m3u8', allowedHosts: ['official.example.com'] }
+  const gateway = createMediaGateway({ moduleId: 'inst-test', assertEnabled() {}, resolveItem: async () => item,
+    fetchImpl: async url => new Response(String(url).endsWith('/master.m3u8') ? master : child) })
+  const [high, low] = (await gateway.handle(context('/root'), item)).body.split('\n')
+    .filter(line => line.startsWith('/test-access/')).map(line => line.replace('/test-access', ''))
+  for (let minute = 30; minute <= 180; minute += 30) {
+    now += 30 * 60000
+    assert.equal((await gateway.handle(context(high))).status, 200, `第 ${minute} 分钟`)
+  }
+  assert.equal((await gateway.handle(context(low))).status, 410)
 })
 
 test('微博错误HLS MIME的TS分片保持二进制与Range，不重取或误写为清单', async () => {

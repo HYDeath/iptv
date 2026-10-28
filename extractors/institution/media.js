@@ -15,12 +15,13 @@ function byteRange(header, total) {
 export function createMediaGateway({ moduleId, fetchImpl, assertEnabled, resolveItem }) {
   const secret = randomBytes(32), resources = new Map()
   const root = `/institution/${moduleId}/`
+  const lifetime = item => item.kind === 'live' ? 3600000 : 86400000
   function register(item, url, prefix) {
     const safe = safeMediaUrl(url, item.allowedHosts)
     const extension = new URL(safe).pathname.match(/\.[a-z0-9]{1,8}$/i)?.[0] || '.ts'
     const key = createHmac('sha256', secret).update(`${item.id}\0${safe}`).digest('hex').slice(0, 36) + extension
     resources.delete(key)
-    resources.set(key, { item: { ...item, url: safe }, until: Date.now() + (item.kind === 'live' ? 3600000 : 86400000) })
+    resources.set(key, { item: { ...item, url: safe }, until: Date.now() + lifetime(item) })
     // Several eight-hour recordings can each reference thousands of segments.
     // Do not evict the start of a programme while registering its own manifest.
     while (resources.size > 100000) resources.delete(resources.keys().next().value)
@@ -38,6 +39,10 @@ export function createMediaGateway({ moduleId, fetchImpl, assertEnabled, resolve
           resources.delete(key)
           return { status: 410, body: '播放引用已过期，请重新打开节目' }
         }
+        // 直播主清单下的子清单只在打开时登记一次，之后播放器一直轮询同一个地址：
+        // 访问即续期并挪到末尾，长直播不会到点 410，按数量淘汰也先淘汰没人用的。
+        resources.delete(key)
+        resources.set(key, { ...resource, until: Date.now() + lifetime(resource.item) })
         item = resource.item
       }
       const abort = new AbortController()
