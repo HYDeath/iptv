@@ -10,12 +10,19 @@ export function selectMediaTracks(media) {
   const audio = program?.streams.find(s => s.codec_type === 'audio') || streams.find(s => s.codec_type === 'audio');
   return { video, audio };
 }
-export function safeMediaUrl(value) {
+export function safeMediaUrl(value, allowedHosts) {
   const u = new URL(value);
   const h = u.hostname.toLowerCase();
   if (!['http:', 'https:'].includes(u.protocol) || u.username || u.password || u.port && !['80', '443'].includes(u.port)) throw new Error('不支持的媒体地址');
   if (!h.includes('.') || /(^|\.)(localhost|local|internal)$/.test(h) || /^[\d.]+$/.test(h) || h.includes(':')) throw new Error('媒体地址必须为公开域名');
+  if (allowedHosts && (!allowedHosts.length || !allowedHosts.some(rule => h === rule || rule.startsWith('*.') && h.endsWith(rule.slice(1))))) throw new Error('媒体域名不属于该官方来源');
   return u.href;
+}
+export function isHlsResponse(url, type) {
+  const path = new URL(url).pathname;
+  // Weibo returns x-mpegURL for some binary TS segments.
+  if (/\.(?:ts|m4s|mp4|m4a|aac|mp3|vtt|webvtt|jpg|png)$/i.test(path)) return false;
+  return /\.m3u8?$/i.test(path) || /mpegurl/i.test(type);
 }
 export function rewriteManifest(text, base, register) {
   if (!text.trimStart().startsWith('#EXTM3U')) throw new Error('上游没有返回 HLS 清单');

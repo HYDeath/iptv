@@ -1013,12 +1013,12 @@ try {
       'inst-xjtu', 'inst-jlu', 'inst-chnmuseum', 'inst-shqyg', 'inst-zjwhg', 'inst-culturecloud',
       'inst-fudan', 'inst-bnu', 'inst-hust', 'inst-gdwhg', 'inst-hnwhg', 'inst-gzdjy', 'inst-ccom',
       'inst-shlib', 'inst-cdstm', 'inst-stvf', 'inst-siff', 'inst-zgc', 'inst-shforum',
-      'inst-phillips', 'inst-elb',
+      'inst-phillips', 'inst-elb', 'inst-smartedu', 'inst-movie1905', 'inst-weibo', 'inst-mgtv-events',
     ]
     assert.deepEqual(modules.filter(module => module.category === 'institution').map(module => module.id).sort(), institutionIds.sort(),
-      '21 家机构各自注册为独立模块，统一归入高校与场馆')
+      '25 个来源各自注册为独立模块，统一归入高校与场馆')
     for (const id of institutionIds) assert.equal(modules.find(module => module.id === id)?.category, 'institution', id)
-    assert.equal(new Set(modules.filter(module => module.category === 'institution').map(module => module.name)).size, 21,
+    assert.equal(new Set(modules.filter(module => module.category === 'institution').map(module => module.name)).size, 25,
       '机构显示名应独立，不合并成跨机构模块')
   })
 
@@ -1072,7 +1072,7 @@ try {
     assert.ok(gdy.length >= 20, '市县台各省模块都默认关闭')
     assert.equal(listModules().filter(module => module.id.startsWith('guangdianyun-')).length, gdy.length)
     const inst = optIn.filter(id => id.startsWith('inst-'))
-    assert.equal(inst.length, 21, '高校与场馆 21 家都默认关闭')
+    assert.equal(inst.length, 25, '高校与场馆 25 个来源都默认关闭')
     assert.deepEqual(optIn.filter(id => !id.startsWith('guangdianyun-') && !id.startsWith('inst-')).sort(),
       ['overseas', 'shandong-counties', 'tdm'],
       '默认关的只有海外两个、山东市县、市县台各省和高校与场馆；新增要想清楚')
