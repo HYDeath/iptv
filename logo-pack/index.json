@@ -502,6 +502,17 @@
    "updated": "2026-09-25",
    "width": 144
   },
+  "东阳新闻综合": {
+   "file": "东阳新闻综合.png",
+   "hash": "e493589bce",
+   "height": 84,
+   "kind": "library",
+   "note": "官方播放器没有独立频道标，公开台标库图片已与本次官方直播画面核对后备份。",
+   "origin": "manual",
+   "source": "https://github.com/taksssss/tv/blob/main/icon/东阳新闻综合.png",
+   "updated": "2026-10-28",
+   "width": 256
+  },
   "都江堰电视台": {
    "file": "都江堰电视台.png",
    "hash": "4eb66c0974",
@@ -1671,6 +1682,17 @@
    "updated": "2026-10-18",
    "width": 256
   },
+  "江山电视一套": {
+   "file": "江山电视一套.png",
+   "hash": "a37522b552",
+   "height": 201,
+   "kind": "library",
+   "note": "官方播放器没有独立频道标，公开台标库图片已与本次官方直播画面核对后备份。",
+   "origin": "manual",
+   "source": "https://github.com/taksssss/tv/blob/main/icon/江山新闻综合.png",
+   "updated": "2026-10-28",
+   "width": 201
+  },
   "江苏城市": {
    "file": "江苏城市.png",
    "hash": "447495a3f5",
@@ -2665,6 +2687,17 @@
    "source": "https://cmsimg.cditv.cn/2022/12/13/4eb219c5-4aa8-4382-9997-77d6f1350dd5.png",
    "updated": "2026-10-17",
    "width": 180
+  },
+  "衢江综合": {
+   "file": "衢江综合.png",
+   "hash": "eda04520c6",
+   "height": 146,
+   "kind": "library",
+   "note": "官方播放器没有独立频道标，公开台标库图片已与本次官方直播画面核对后备份。",
+   "origin": "manual",
+   "source": "https://github.com/taksssss/tv/blob/main/icon/衢江新闻综合.png",
+   "updated": "2026-10-28",
+   "width": 256
   },
   "泉州闽南语": {
    "file": "泉州闽南语.png",
@@ -5625,6 +5658,9 @@
   "yunnan/yunnan-satellite": "云南卫视",
   "yunnan/yunnan-travel": "云南康旅",
   "yunnan/yunnan-urban": "云南都市",
-  "yunnan/yunnan-zhaotong": "昭通综合"
+  "yunnan/yunnan-zhaotong": "昭通综合",
+  "zhejiang-local/zhejiang-local-dongyang": "东阳新闻综合",
+  "zhejiang-local/zhejiang-local-jiangshan": "江山电视一套",
+  "zhejiang-local/zhejiang-local-qujiang": "衢江综合"
  }
 }

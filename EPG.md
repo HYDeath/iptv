@@ -96,6 +96,7 @@
 | `hangzhou` | 杭州 | 无官方节目单 | — | — | — | 葫芦网看电视页内嵌的节目表全天是 24 条整点「精彩节目」占位（页面切日期用的 /m2o/program_switch.php 回空），频道接口的 cur_program 同样是「精彩节目」、use_self_program 为 0；mapi.hoolo.tv 上试过 program.php、program_list.php、channel_program.php 都被 openresty 403；央视网试过 hangzhou / hangzhou1 / hztv / hztv1 / xihumingzhu 都是 params error，央视频、咪咕也没收 |
 | `ningbo` | 宁波 | 无官方节目单 | — | — | — | 宁波广电网的「电视节目单」是每周一篇文章，节目表是一套、二套两张图片（没有三套、四套），没有可读的数据；频道资料 JSONP 只有地址；央视网 nbtv1–nbtv5 有数据，但每天一模一样（9 月 1 日与 10 月 6 日逐条相同），还是「看看看」「汇市直通车」这些旧栏目，和官方本周节目表对不上（官方 7:05 宁波新闻重播、18:30 看点），是冻结模板，不用 |
 | `jiaxing` | 嘉兴 | 无官方节目单 | — | — | — | 趣看播放器的节目表接口 qukanvideo.com/h5/channel/view/item/list?liveId=&day= 只有已播出的日子有数据（且多为「无版权」时段块），今天、明天都是空数组，和辽宁北斗一样只是回看列表；央视网试过 jiaxing / jiaxing1 / jxtv 都是 params error，央视频、咪咕也没收 |
+| `zhejiang-local` | 浙江地方台 | 无官方节目单 | — | — | 官方趣看 H5 channel/view/item/list | 2026-10-28 实测今明两天：东阳均为「普通节目」占位；衢江、江山均为空，不把占位或空表当节目单 |
 | `taizhou` | 台州（天台和合） | 无官方节目单 | — | — | — | 和合天台 App 的看电视页只提供直播入口及栏目回看；趣看官方播放器今明两天均显示暂无数据，channel/view/item/list?liveId=1783497905770300&day= 的两天响应均为空数组；央视网 tiantai、tiantai1、tttv 返回 params error，所查央视频、咪咕公开目录未收录 |
 | `shaoxing` | 绍兴 | 已接入 | 3/3 | 2 | app.shaoxing.com.cn/video/player/playbill | 官网直播播放器公开接口，stream_id 为 78、75、74，start_time / end_time 为上海日期的 Unix 秒区间；已核验今明两天有真实编排，starttime / endtime 为秒级起止时间，过滤节目预告、宣传包装和「精彩节目」占位，按频道 ref 精确匹配 |
 | `jstv` | 江苏 | 已接入 | 10/10 | 1 | live-lizhi.jstv.com/api/Channel/Epg | 匿名 JWT；频道要用导航里的 extraId |

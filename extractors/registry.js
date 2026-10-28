@@ -194,6 +194,7 @@ import jstv from './jstv/index.js'
 import jiaxing from './jiaxing/index.js'
 import taizhou from './taizhou/index.js'
 import shaoxing from './shaoxing/index.js'
+import zhejiangLocal from './zhejiang-local/index.js'
 import iqilu from './iqilu/index.js'
 import kankanews from './kankanews/index.js'
 import livechina from './livechina/index.js'
@@ -279,6 +280,7 @@ const MODULES = [
   jiaxing,
   taizhou,
   shaoxing,
+  zhejiangLocal,
   jstv,
   wuxi,
   yangzhou,
