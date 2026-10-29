@@ -25,7 +25,7 @@
  *                                 只有面向海外、在大陆连不上或常卡顿的模块写 false
  *                                 （海外频道、澳门），由用户自己打开；频道量大、只有本地少数人
  *                                 看的市县模块也可以（山东市县，两百来台按地市分组；市县台各省模块）；
- *                                 高校与场馆（institution）以点播录像为主、媒体全经本机转发，也一律默认关；各模块在海外的
+ *                                 高校与场馆（institution）以点播录像为主、媒体全经本机转发，也一律默认关；福建百视通以重复频道备用为主，按用户要求默认关；各模块在海外的
  *                                 实测见仓库根目录 OVERSEAS.md。v4.29.0 及以前已有的模块
  *                                 在存量配置里多已落成 enabled:true，改它们的默认值要另写迁移
  *   capabilities          object  { cache: 'disk'|'memory'|'none',
@@ -171,6 +171,7 @@ import cztv from './cztv/index.js'
 import dalian from './dalian/index.js'
 import douyuLive from './douyu-live/index.js'
 import fjtv from './fjtv/index.js'
+import bestvFj from './bestv-fj/index.js'
 import fengshows from './fengshows/index.js'
 import gansu from './gansu/index.js'
 import gdtv from './gdtv/index.js'
@@ -263,6 +264,7 @@ const MODULES = [
   gzstv,
   gxtv,
   fjtv,
+  bestvFj,
   quanzhouMinnan,
   quanzhouCounty,
   putian,

@@ -217,6 +217,15 @@
    "updated": "2026-09-25",
    "width": 251
   },
+  "百视通生活时尚": {
+   "file": "百视通生活时尚.png",
+   "hash": "92b1f0f947",
+   "height": 80,
+   "origin": "bestv-fj",
+   "source": "https://tvappstatic.bestv.com.cn/images/20230215/a0bdbb056bb1b.png",
+   "updated": "2026-10-29",
+   "width": 80
+  },
   "包头": {
    "file": "包头.png",
    "hash": "7cd2782865",
@@ -484,6 +493,15 @@
    "updated": "2026-09-25",
    "width": 256
   },
+  "东方财经": {
+   "file": "东方财经.png",
+   "hash": "6c3f8ea1de",
+   "height": 80,
+   "origin": "bestv-fj",
+   "source": "https://tvappstatic.bestv.com.cn/images/20230215/bc5643921c85f.png",
+   "updated": "2026-10-29",
+   "width": 80
+  },
   "东方卫视": {
    "file": "东方卫视.png",
    "hash": "d4a95ef7a6",
@@ -513,6 +531,15 @@
    "updated": "2026-10-28",
    "width": 256
   },
+  "动漫秀场": {
+   "file": "动漫秀场.png",
+   "hash": "4c0826f91a",
+   "height": 80,
+   "origin": "bestv-fj",
+   "source": "https://tvappstatic.bestv.com.cn/images/20220825/fe9c078caa0e8.png",
+   "updated": "2026-10-29",
+   "width": 80
+  },
   "都江堰电视台": {
    "file": "都江堰电视台.png",
    "hash": "4eb66c0974",
@@ -523,6 +550,24 @@
    "source": "https://www.tvyan.com/tai/dujiangyan/",
    "updated": "2026-10-17",
    "width": 126
+  },
+  "都市剧场": {
+   "file": "都市剧场.png",
+   "hash": "0dae039aa6",
+   "height": 174,
+   "origin": "bestv-fj",
+   "source": "https://tvappstatic.bestv.com.cn/images/20230210/361a22bfa7166.jpg",
+   "updated": "2026-10-29",
+   "width": 191
+  },
+  "多彩文体4K": {
+   "file": "多彩文体4K.png",
+   "hash": "8a72482d05",
+   "height": 80,
+   "origin": "bestv-fj",
+   "source": "https://tvappstatic.bestv.com.cn/images/20260331/ba045e46aa394.png",
+   "updated": "2026-10-29",
+   "width": 80
   },
   "鄂尔多斯": {
    "file": "鄂尔多斯.png",
@@ -541,6 +586,15 @@
    "source": "http://wapx.cmvideo.cn:8080/publish/poms/image/5500/212/893/202405081702_1715158828498_H32_1080.webp",
    "updated": "2026-09-25",
    "width": 256
+  },
+  "法治天地": {
+   "file": "法治天地.png",
+   "hash": "10dc45e59c",
+   "height": 56,
+   "origin": "bestv-fj",
+   "source": "https://tvappstatic.bestv.com.cn/images/20230210/51b21b3509cf5.png",
+   "updated": "2026-10-29",
+   "width": 90
   },
   "翡翠台": {
    "file": "翡翠台.png",
@@ -2003,6 +2057,15 @@
    "source": "https://rmt.leshan.cn/file/a1100/2024/01/03/872b1304-72c2-40af-9f5f-e746ed55508a_one.jpg",
    "updated": "2026-10-23",
    "width": 193
+  },
+  "乐游": {
+   "file": "乐游.png",
+   "hash": "fa1f195d1d",
+   "height": 80,
+   "origin": "bestv-fj",
+   "source": "https://tvappstatic.bestv.com.cn/images/20230210/9e80b8eb397c0.png",
+   "updated": "2026-10-29",
+   "width": 80
   },
   "梨园频道": {
    "file": "梨园频道.png",
@@ -5186,6 +5249,13 @@
   "beidou/beidou-shenyang-acb1a5713531ac7feb7836b1b4db442c": "沈阳公共",
   "beidou/beidou-shenyang-d447fcc472f14c7f14872d4e26b12d8f": "沈阳新闻综合",
   "beidou/beidou-shenyang-eaecc3f39a6e94f2ac6197c229b4cd6b": "沈阳经济",
+  "bestv-fj/bestv-fj-219": "多彩文体4K",
+  "bestv-fj/bestv-fj-220": "都市剧场",
+  "bestv-fj/bestv-fj-222": "动漫秀场",
+  "bestv-fj/bestv-fj-225": "乐游",
+  "bestv-fj/bestv-fj-226": "法治天地",
+  "bestv-fj/bestv-fj-227": "东方财经",
+  "bestv-fj/bestv-fj-230": "百视通生活时尚",
   "chengdu/chengdu-cdrcxf": "成都蓉城先锋",
   "chengdu/chengdu-cdtv1": "成都新闻综合",
   "chengdu/chengdu-cdtv2": "成都经济资讯",
