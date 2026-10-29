@@ -94,7 +94,7 @@ function probeMigu(address) {
   return new Promise(resolve => {
     const req = https.get({
       host: 'play.miguvideo.com',
-      path: '/',
+      path: '/playurl/v1/play/playurl?contId=624878440&rateType=2',
       family: 4,
       localAddress: address,
       timeout: 4000,
