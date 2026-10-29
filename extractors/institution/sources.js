@@ -12,12 +12,18 @@ import * as ceremonies from './providers/ceremonies.mjs';
 import * as conferences from './providers/conferences.mjs';
 import * as auctions from './providers/auctions.mjs';
 import * as stages from './providers/stages.mjs';
+import * as smartedu from './providers/smartedu.mjs';
+import { movie1905Adapter, weiboAdapter, mgtvEventsAdapter } from './providers/events/index.js';
 
 const source = (id, name, selector, adapter, officialUrl, description, international = false) => Object.freeze({
   id, name, providerId: adapter.provider.id, selector, officialUrl, description, adapter, international,
 });
 
 export const SOURCES = Object.freeze([
+  source('inst-smartedu', '国家智慧教育·高教课堂', '国家智慧教育·高教课堂', smartedu, smartedu.provider.officialUrl, '智慧高教教创赛公开课堂实录，首批三个学科六讲；不包含中小学登录课程。'),
+  source('inst-movie1905', '1905电影活动', '1905电影活动', movie1905Adapter, 'https://www.1905.com/special/', '1905官网免费完整活动回放，首批六场，含《绽放》片场探班及横店影视节。'),
+  source('inst-weibo', '微博官方活动', '微博官方活动', weiboAdapter, 'https://weibo.com/l/wblive/p/show/1022:2321325308278937878564', '已核实官方账号的完整活动回放，首批四场，含《金吾不禁》剧组探班与电影之夜。'),
+  source('inst-mgtv-events', '芒果活动', '芒果活动', mgtvEventsAdapter, 'https://www.mgtv.com/live/', '芒果官方活动目录的匿名完整回放，首批三场；播放前检查权益与清单全长。'),
   source('inst-xjtu', '西安交通大学', '西安交通大学思源直播', campus, 'https://zhibo.xjtu.edu.cn/', '思源直播官网公开讲座与校园活动；仅在官方确认在播时标为直播，其余为回放。'),
   source('inst-jlu', '吉林大学', '吉林大学电视台', campus, 'https://tv.jlu.edu.cn/', '吉林大学电视台公开会议、典礼和晚会录像；官方媒体证书失效时仅采用已核验的同主机 HTTP。'),
   source('inst-chnmuseum', '国家博物馆', '国家博物馆 · 国博云播', museum, museum.provider.officialUrl, '国博云播官网公开讲堂回放，动态获取最新四场非宗教讲座。'),

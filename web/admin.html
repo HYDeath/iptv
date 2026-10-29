@@ -7,9 +7,9 @@
          （外部播放器本来就不带）。服务端不读 Referer，本页自己的接口不受影响。 -->
     <meta name="referrer" content="no-referrer">
     <title>IPTV 频道管理</title>
-    <link rel="icon" href="favicon.ico?v=1" sizes="16x16 32x32 48x48 64x64" type="image/x-icon">
-    <link rel="icon" href="favicon.svg?v=1" sizes="any" type="image/svg+xml">
-    <link rel="apple-touch-icon" href="apple-touch-icon.png?v=1" sizes="180x180">
+    <link rel="icon" href="favicon.ico?v=2" sizes="16x16 32x32 48x48 64x64" type="image/x-icon">
+    <link rel="icon" href="favicon.svg?v=2" sizes="any" type="image/svg+xml">
+    <link rel="apple-touch-icon" href="apple-touch-icon.png?v=2" sizes="180x180">
     <style>
         * {
             margin: 0;
@@ -3292,6 +3292,7 @@
         .system-config-item { min-width: 0; padding: 18px; border: 1px solid var(--ui-line); border-radius: 12px; background: var(--ui-surface); box-shadow: none; }
         .system-config-item label { margin-bottom: 8px; color: var(--ui-text); font-size: 13px; font-weight: 500; }
         .system-config-hint { margin-top: 8px; color: var(--ui-muted); font-size: 12px; line-height: 1.8; overflow-wrap: anywhere; }
+        .system-config-hint.sys-env-hint { margin-top: 4px; color: var(--ui-warning); }
         .system-config-actions { gap: 8px; margin-top: 4px; flex-wrap: wrap; justify-content: flex-end; }
         .settings-panel .system-config-actions .btn-primary { color: var(--ui-text-secondary); border-color: var(--ui-line-strong); background: var(--ui-surface); }
         .settings-panel .system-config-actions .btn-primary:hover { color: var(--ui-text); background: var(--ui-surface-strong); }
@@ -3332,7 +3333,7 @@
         .user-guide-card { padding: 14px 16px !important; border-color: var(--ui-line) !important; border-radius: 10px !important; background: var(--ui-surface-soft) !important; color: var(--ui-text-secondary) !important; }
         .settings-panel a:not(.btn) { color: #2563eb; text-decoration: none; }
         .settings-panel a:not(.btn):hover { text-decoration: underline; }
-        .settings-panel :is(#envOverrideWarning, #userPassWarning) { border: 1px solid var(--ui-warning-line) !important; border-radius: 10px !important; background: var(--ui-warning-soft) !important; color: var(--ui-warning) !important; }
+        .settings-panel #userPassWarning { border: 1px solid var(--ui-warning-line) !important; border-radius: 10px !important; background: var(--ui-warning-soft) !important; color: var(--ui-warning) !important; }
         .settings-panel .system-config-hint[style*="#d4380d"] { padding: 10px 12px; border-radius: 9px; color: var(--ui-warning) !important; background: var(--ui-warning-soft); }
         #aliasList > div:not(.system-config-hint),
         #groupRuleList > div:not(.system-config-hint),
@@ -4446,7 +4447,7 @@
             <div class="header">
                 <div class="tabs">
                     <a class="brand" href="https://ifansclub.com/" target="_blank" rel="noopener noreferrer" aria-label="iFansClub 官网（在新标签页打开）" title="访问 iFansClub 官网（新标签页）">
-                        <img class="brand-mark" src="favicon.svg?v=1" width="44" height="44" alt="" aria-hidden="true">
+                        <img class="brand-mark" src="icon-512.png?v=2" width="44" height="44" alt="" aria-hidden="true">
                     </a>
                     <div class="tabs-left">
                         <button class="tab active" onclick="switchTab(0)">我的频道</button>
@@ -4649,7 +4650,6 @@
                 </div>
 
                 <div class="settings-subpanel active" id="settingsSub0">
-                <div id="envOverrideWarning" style="display: none; margin: 10px 0; padding: 12px 14px; background: #fff7e6; border: 1px solid #ffd591; border-left: 4px solid #fa8c16; border-radius: 6px; color: #874d00; font-size: 13px; line-height: 1.7;"></div>
 
                 <section class="sys-section">
                     <div class="sys-section-head">
@@ -4666,11 +4666,13 @@
                             <label>公网地址</label>
                             <input type="text" id="sysHost" oninput="setSaveDirty('sysconfig')" placeholder="http://example.com:xxxx">
                             <div class="system-config-hint">选填。填 <code>http(s)://…</code> 完整地址时<strong>原样使用</strong>（不写端口即 80/443，适合内网穿透/反向代理）；只填 ip/域名则自动补 http:// 和上方的服务端口</div>
+                            <div class="system-config-hint sys-env-hint" data-env-field="host" hidden>docker-compose 里设了 <code>mhost</code>：清空保存后仍按它生效，要去掉请改 compose 后重启容器。</div>
                         </div>
                         <div class="system-config-item">
                             <label>访问密码 <span class="sys-badge is-address" title="保存后后台和订阅地址会变，页面会自动跳到新地址">改后地址会变</span></label>
                             <input type="text" id="sysPass" oninput="setSaveDirty('sysconfig')" placeholder="留空表示无密码">
                             <div class="system-config-hint">设置后访问格式：http://ip:port/密码/...</div>
+                            <div class="system-config-hint sys-env-hint" data-env-field="pass" hidden>docker-compose 里设了 <code>mpass</code>：清空保存后仍按它生效，要去掉请改 compose 后重启容器。</div>
                         </div>
                         <div class="system-config-item">
                             <label>管理页面路径 <span class="sys-badge is-address" title="保存后后台和订阅地址会变，页面会自动跳到新地址">改后地址会变</span></label>
@@ -4794,12 +4796,13 @@
                 <div class="settings-editor-card" style="margin-top: 4px;">
                     <div>
                         <div style="font-size:16px; font-weight:600; color:#333;">消息推送</div>
-                        <div class="system-config-hint">后台顶部「需要处理的提醒」里出现需要你动手处理的新问题（登录凭证失效、EPG 源失败、模块配置损坏等）或问题恢复时，发一条消息到飞书、企业微信、钉钉、Telegram、Bark 或你自己的 Webhook，不用开着后台也能知道。只发消息，不接收任何指令。</div>
+                        <div class="system-config-hint">后台顶部「需要处理的提醒」里出现需要你动手处理的新问题（登录凭证失效、EPG 源失败、模块配置损坏等）或问题恢复时，发一条消息到飞书、企业微信（群机器人或自建应用）、钉钉、Telegram、Bark 或你自己的 Webhook，不用开着后台也能知道。只发消息，不接收任何指令。</div>
                     </div>
                     <div class="user-guide-card" style="margin-top:10px; padding:12px 14px; background:#f7f9fc; border:1px solid #eef1f6; border-radius:6px; font-size:13px; color:#555; line-height:1.7;">
                         <div>• 模块抓取失败、官方服务故障<strong>不推送</strong>（你处理不了，会自动重试），只在后台提醒里显示；其他提醒出现即发，恢复时再发一条「已恢复」；</div>
                         <div>• 升级前就已存在的提醒不发；同一个问题没恢复前只发一次；</div>
                         <div>• Telegram 的接口在大陆连不上：部署在大陆需给容器设 <code>HTTPS_PROXY</code>，或在「API 地址」填自己的反代；</div>
+                        <div>• 企业微信应用：成员在企业微信里收到，关注了企业「微信插件」的在微信里也能收到；2022 年 6 月以后新建的应用要把服务器公网 IP 加进应用的「企业可信IP」，否则发送失败（60020），IP 不固定的在「API 地址」填一台固定 IP 服务器上转发 <code>qyapi.weixin.qq.com</code> 的反代；</div>
                         <div>• 机器人地址和 Token 存在数据目录 <code>notify-channels.json</code>，会随「备份迁移」里的配置导出一起导出，别把备份发给别人。</div>
                     </div>
 
@@ -4837,7 +4840,7 @@
                                 <strong>当前版本</strong>
                             </div>
                             <div class="about-version-body">
-                                <span id="versionText">v4.51.2</span>
+                                <span id="versionText">v4.53.1</span>
                                 <button class="btn btn-sm" onclick="checkUpdate()" id="checkUpdateBtn">检查更新</button>
                             </div>
                             <div id="updateInfo" class="about-update-info" style="display: none;"></div>
@@ -9511,41 +9514,17 @@
             document.getElementById('sysAdminPath').value = systemConfig.adminPath || 'admin';
             document.getElementById('sysProgramInterval').value = systemConfig.programInfoUpdateInterval || '8';
             document.getElementById('sysEnableDisplayNameUnify').checked = systemConfig.enableDisplayNameUnify === true;
-            renderEnvOverrideWarning();
+            renderEnvHints();
         }
 
-        // 提示：哪些项是被 docker-compose 环境变量控制的（此处修改/清空可能不生效，需改 compose）
-        function renderEnvOverrideWarning() {
-            const box = document.getElementById('envOverrideWarning');
-            if (!box) return;
-            const labels = {
-                port: '端口', host: '公网地址',
-                pass: '访问密码',
-                programInfoUpdateInterval: '更新间隔', refreshToken: 'token刷新', adminPath: '管理页面路径',
-            };
+        // 公网地址 / 访问密码由 docker-compose 环境变量设置时，在输入框下提示：这两项清空保存后
+        // 会回退到 mhost / mpass（config.js 里是 `||` 兜底）。端口、管理路径、更新间隔保存时
+        // 总会写入非空值，环境变量只在第一次保存前起作用，不提示。
+        function renderEnvHints() {
             const overrides = systemConfig.envOverrides || {};
-            const names = Object.keys(overrides).filter(k => overrides[k]).map(k => labels[k] || k);
-            const parts = [];
-            if (names.length > 0) {
-                parts.push(
-                    '⚠️ 以下配置由 <strong>docker-compose 环境变量</strong> 设置：<strong>' + names.join('、') + '</strong><br>' +
-                    '在此填入新值可临时覆盖，但<strong>清空后保存会回退到环境变量的值</strong>（环境变量为兜底）。' +
-                    '要彻底修改或移除，请改 <code>docker-compose.yml</code> 里对应的 <code>m*</code> 变量后重启容器。'
-                );
-            }
-            if (systemConfig.blankModeEnv) {
-                parts.push(
-                    '已通过环境变量 <code>mblank</code> 开启<strong>空白模式</strong>：咪咕 / 内置单频道源 / 内置订阅源默认关闭。' +
-                    '可在上方单独勾选并保存以覆盖（保存后以你的勾选为准）。'
-                );
-            }
-            if (parts.length === 0) {
-                box.style.display = 'none';
-                box.innerHTML = '';
-                return;
-            }
-            box.style.display = 'block';
-            box.innerHTML = parts.join('<hr style="border:none;border-top:1px solid #ffd591;margin:8px 0">');
+            document.querySelectorAll('[data-env-field]').forEach(el => {
+                el.hidden = !overrides[el.dataset.envField];
+            });
         }
 
         // 初始化咪咕账号获取Bookmarklet

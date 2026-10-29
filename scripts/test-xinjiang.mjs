@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 import assert from 'node:assert/strict'
-import { generateKeyPairSync } from 'node:crypto'
+import { createHash, generateKeyPairSync } from 'node:crypto'
 
 import xinjiang from '../extractors/xinjiang/index.js'
 import {
@@ -203,14 +203,37 @@ check('接口签名、上海日期和 Nuxt 脚本发现均受严格约束', () =
   const signed = createSignedParams(XINJIANG_CHANNEL_ENDPOINT, '1861920000000', material, {
     now, random: () => 0.123456789,
   })
-  assert.match(signed.guid, /^[a-z0-9]{9}C[a-z0-9]+$/)
-  assert.equal(signed.guid[9], 'C')
+  assert.match(signed.guid, /^[a-z0-9]+-[a-z0-9]+$/)
+  assert.equal(signed.guid[8], '-')
+  assert.equal(signed.hash, `000${signed.hash.slice(3)}`)
+  assert.equal(signed.hash, createHash('sha256')
+    .update(`${signed.ts}${signed.x}`).digest('hex'))
   assert.match(signed.sign, /^[a-f0-9]{32}[A-Za-z0-9+/]+=*$/)
   assert.equal(shanghaiDate(Date.parse('2028-12-31T16:01:00Z')), '2029-01-01')
   assert.deepEqual(scriptUrls(
     '<script src="/_nuxt/live_A-1.js"></script><script src="https://evil.test/_nuxt/no.js"></script><script src="/plain.js"></script>',
     XINJIANG_PAGE,
   ), ['https://www.xjtvs.com.cn/_nuxt/live_A-1.js'])
+})
+
+check('random_number ≥ 15 时 md5 用第 8 位换成 y 的 guid 变体，工作量证明随 ts 固定', () => {
+  const material = { random_string: 'abcdefghijklmnopqrstuvwxyzABCDEFGH', random_number: 20, publicKey: pem }
+  const stamp = '1861920000000'
+  const signed = createSignedParams(XINJIANG_CHANNEL_ENDPOINT, stamp, material, {
+    now, random: () => 0.123456789, powTs: 1861920000123,
+  })
+  const md5 = text => createHash('md5').update(text, 'ascii').digest('hex')
+  const token = 'abcdefghijklmnopqrstuvwxyzABCDEFGH'.replace('u', '')
+  const signGuid = `${signed.guid.slice(0, 8)}y${signed.guid.slice(9)}`
+  const endpoint = XINJIANG_CHANNEL_ENDPOINT.slice(1)
+  assert.equal(signed.sign.slice(0, 32), md5(`${token}${signGuid}${stamp}${endpoint}`))
+  assert.notEqual(signed.sign.slice(0, 32), md5(`${token}${signed.guid}${stamp}${endpoint}`))
+  assert.equal(signed.ts, 1861920000123)
+  assert.match(signed.hash, /^000[a-f0-9]{61}$/)
+  assert.equal(signed.hash, createHash('sha256').update(`${signed.ts}${signed.x}`).digest('hex'))
+  assert.equal(createSignedParams(XINJIANG_CHANNEL_ENDPOINT, stamp, material, {
+    now, random: () => 0.5, powTs: 1861920000123,
+  }).x, signed.x)
 })
 
 check('频道接口逐路校验：标禁播、缺席或台号对不上的只跳过那一路，一路都没有才报错', () => {
@@ -282,6 +305,9 @@ await checkAsync('首次播放完成签名发现，各路共享短效入口缓�
       assert.equal(url.searchParams.get('json'), 'true')
       assert.equal(url.searchParams.get('stamp'), '1861920000000')
       assert.match(url.searchParams.get('sign') || '', /^[a-f0-9]{32}[A-Za-z0-9+/]+=*$/)
+      assert.match(url.searchParams.get('hash') || '', /^000[a-f0-9]{61}$/)
+      assert.equal(url.searchParams.get('hash'), createHash('sha256')
+        .update(`${url.searchParams.get('ts')}${url.searchParams.get('x')}`).digest('hex'))
       return response(apiPayload())
     }
     if (url.hostname === 'slstplay.xjtvs.com.cn') {
@@ -352,4 +378,4 @@ await checkAsync('当前节目被标禁播时说明是这档节目限播，不�
   assert.notEqual((await resolver.resolve('xjtv-4', { now })).url, '')
 })
 
-console.log(`\n全部通过：${passed}/14 ✅`)
+console.log(`\n全部通过：${passed}/15 ✅`)

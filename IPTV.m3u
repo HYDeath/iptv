@@ -111,3 +111,13 @@ https://play.cmptp.fjgdwl.com/live/63a563ec75764af588f3215b0afa2588.m3u8
 #EXTINF:-1 group-title="青海",西宁新闻综合
 https://liveout.xntv.tv/a65jur/96iln2.m3u8
 # === END 西宁广电直连源 ===
+
+# === BEGIN 青海市台官方直连源 ===
+# 来源：格尔木「望昆仑」、海东「爱上河湟」官方 App 的电视直播接口；2026-10-27 实测两路均为 1080p/25fps、H.264/AAC，清单和媒体分片持续更新，无需额外请求头。
+# 地址带官方长效 sign/t 参数，按接口原样保留；新版本的「青海」模块每天更新当前地址，并自动收掉本区块的同名精选条目。未升级的部署仍可直接播放本区块。
+# 格尔木节目单为全天「当日回放」占位、海东节目表为空，均无可用 EPG；官方台标已收入内置台标库。
+#EXTINF:-1 group-title="青海" catchup="none",格尔木新闻综合
+https://miku-live-hls-gemwkl-tv.geermurmt.cn/gemwkl-tv/xwzh.m3u8?sign=bd290c67d513b07aa49842b8aedd02c2&t=1876791311
+#EXTINF:-1 group-title="青海" catchup="none",海东综合频道
+https://hls-hdapp.hdhhy.cn/ashh-tv/zhds.m3u8?sign=26c873e6e3d94ba02aa78c0fbf326dfd&t=1886228277
+# === END 青海市台官方直连源 ===

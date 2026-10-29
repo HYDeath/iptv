@@ -69,7 +69,7 @@
 | 重庆 | 取列表 `rmtapi.cbg.cn` 连接被重置 | 港 / 日 / 新 / 美都被重置 |
 | 贵州 | 清单 `*.gzstv.com` 403 | 香港阿里云、家宽及日 / 新 / 美都 403 |
 | 新疆 | 换签 `slstapi.xjtvs.com.cn` 403 | 香港三类网络、日 / 新 / 美都 403 |
-| 青海 | 换签 `mapi.qhbtv.com.cn` 连不上 | 港 / 日 / 新 / 美连接超时，与 api.js 注释一致 |
+| 青海 | 省台换签 `mapi.qhbtv.com.cn` 连不上 | 四路省台在港 / 日 / 新 / 美连接超时；格尔木、海东两路直链于 2026-10-27 新增，尚未做海外测试 |
 | 宁夏 | 清单 `hls.nxhhy.cn` 403 | 港超时，日 / 新 / 美 403 |
 | 山东 | 换签 `feiying.litenews.cn` 回 HTTP 567 | Azure 三轮 567；Globalping 港 / 日 / 新也是 567 |
 | 深圳 | 清单 `sztv-live.sztv.com.cn` 403 / 超时 | Azure 三轮不通；签名绑请求方 IP，Globalping 大陆对照也 403，香港未能验证 |

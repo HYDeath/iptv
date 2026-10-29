@@ -159,10 +159,18 @@ function stripVolatileParams(url) {
   const query = hashAt === -1 ? url.slice(queryAt + 1) : url.slice(queryAt + 1, hashAt)
   const tail = hashAt === -1 ? '' : url.slice(hashAt)
 
+  // 格尔木、海东的官方直链使用 sign + t。t 是这两条入口的签名时效，
+  // 换签后频道身份不变；其它来源的 t 可能是台号，不能一起剥掉。
+  const signedTime = (head === 'https://miku-live-hls-gemwkl-tv.geermurmt.cn/gemwkl-tv/xwzh.m3u8'
+    || head === 'https://hls-hdapp.hdhhy.cn/ashh-tv/zhds.m3u8')
+    && /(?:^|&)sign=[a-f0-9]{32}(?:&|$)/i.test(query)
+    && /(?:^|&)t=\d{10}(?:&|$)/.test(query)
+
   const kept = query.split('&').filter(pair => {
     if (!pair) return false
     const eq = pair.indexOf('=')
-    return !VOLATILE_URL_PARAMS.test(eq === -1 ? pair : pair.slice(0, eq))
+    const key = eq === -1 ? pair : pair.slice(0, eq)
+    return !VOLATILE_URL_PARAMS.test(key) && !(signedTime && key === 't')
   })
 
   return kept.length ? `${head}?${kept.join('&')}${tail}` : `${head}${tail}`

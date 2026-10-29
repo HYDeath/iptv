@@ -216,6 +216,7 @@ const PLAYER_ASSETS = Object.freeze({
 })
 // 固定的品牌图标；与播放器资源一样支持密码前缀和反向代理子路径。
 const ICON_ASSETS = Object.freeze({
+  '/icon-512.png': ['icon-512.png', 'image/png'],
   '/favicon.ico': ['favicon.ico', 'image/x-icon'],
   '/favicon.svg': ['favicon.svg', 'image/svg+xml'],
   '/apple-touch-icon.png': ['apple-touch-icon.png', 'image/png'],
@@ -388,8 +389,8 @@ async function handleRequest(req, res) {
       printBlue("API: 获取系统配置")
       const result = getSystemConfigAPI()
       res.writeHead(200, { 'Content-Type': 'application/json;charset=UTF-8' });
-      // 附带 envOverrides（哪些项被环境变量控制）与 blankModeEnv（是否 mblank 空白模式），供前端提示；不影响表单字段读取
-      res.end(JSON.stringify(result.success ? { ...result.data, envOverrides: result.envOverrides || {}, blankModeEnv: !!result.blankModeEnv } : {}));
+      // 附带 envOverrides（哪些项被环境变量控制），供前端提示；不影响表单字段读取
+      res.end(JSON.stringify(result.success ? { ...result.data, envOverrides: result.envOverrides || {} } : {}));
       return
     }
 
@@ -585,7 +586,7 @@ async function handleRequest(req, res) {
       return
     }
 
-    // 消息推送渠道（utils/notify.js）：企微 / 飞书 / 钉钉 / Telegram / Bark / 通用 Webhook
+    // 消息推送渠道（utils/notify.js）：企微群机器人 / 企微应用 / 飞书 / 钉钉 / Telegram / Bark / 通用 Webhook
     if (routePath === '/api/notify' && method === 'GET') {
       const result = await getNotifyAPI()
       res.writeHead(result.success ? 200 : 500, { 'Content-Type': 'application/json;charset=UTF-8' });

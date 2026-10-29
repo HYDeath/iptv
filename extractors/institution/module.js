@@ -18,7 +18,7 @@ export function createInstitutionModule(spec, runtime = {}) {
     if (!item || !['live', 'vod'].includes(item.kind) || !item.id || !item.title || RELIGIOUS.test(`${item.title} ${item.description || ''}`)) throw new Error('节目当前不在公开收录范围')
     if (item.institution && item.institution !== spec.selector) throw new Error('节目不属于该机构')
     if (item.provider && item.provider !== spec.providerId) throw new Error('来源不匹配')
-    return { ...item, institution: spec.selector, url: safeMediaUrl(item.url) }
+    return { ...item, institution: spec.selector, url: safeMediaUrl(item.url, item.allowedHosts) }
   }
   async function resolveItem(id, expectedKind) {
     assertEnabled()
