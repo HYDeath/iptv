@@ -17,11 +17,11 @@ const play = url => ({ tvid: 219, state: 'live', paid: false, contentIsFree: fal
 let passed = 0
 async function check(name, fn) { await fn(); passed++; console.log(`  ✅ ${name}`) }
 
-await check('模块默认关，64 路可选、默认七路、旧 ID 205 不认领', () => {
+await check('模块默认开，64 路可选、默认七路、旧 ID 205 不认领', () => {
   assert.equal(getModule('bestv-fj'), module)
   assert.equal(module.name, '百视通')
   assert.equal(module.region, '百视通')
-  assert.equal(module.defaultEnabled, false)
+  assert.notEqual(module.defaultEnabled, false)
   assert.equal(module.channelHlsMode, 'relay')
   assert.equal(module.relayProxyCompatible, true)
   assert.equal(module.capabilities.catchup, false)
@@ -46,18 +46,44 @@ await check('官方目录七路与完整 64 路可构建，台标来自平台、
 });
 await check('目录结构变化、频道消失、第三方台标不当作抓取成功', () => {
   assert.throws(() => buildChannels({}, DEFAULT_CHANNEL_IDS))
-  assert.throws(() => buildChannels([], DEFAULT_CHANNEL_IDS))
+  assert.equal(buildChannels([], DEFAULT_CHANNEL_IDS).length, 0) // 空目录由 fetch 判失败，见地区版目录一项
   const bad = structuredClone(catalog)
   bad.flatMap(g => g.items).find(c => c.id === 219).icon = 'http://127.0.0.1/logo.png'
   assert.throws(() => buildChannels(bad, DEFAULT_CHANNEL_IDS))
   const stopped = structuredClone(catalog)
   stopped.flatMap(g => g.items).find(c => c.id === 219).enabled = 0
   assert.equal(buildChannels(stopped, DEFAULT_CHANNEL_IDS).length, 6)
+  const conflict = structuredClone(catalog)
+  conflict[0].items.push({ ...conflict.flatMap(g => g.items).find(c => c.id === 219), icon: 'https://tvappstatic.bestv.com.cn/images/x/other.png' })
+  assert.throws(() => buildChannels(conflict, DEFAULT_CHANNEL_IDS), /未唯一列出频道 219/)
+});
+await check('地区版目录缺台只跳过：上海版目录出三路并写明跳过哪些，一路都没有才失败', async () => {
+  // 2026-10-29 镇江上海移动出口（AS24400）拿到的真实目录，字段裁剪同 catalog.json
+  const shanghai = JSON.parse(readFileSync(new URL('./fixtures/bestv-fj/catalog-shanghai.json', import.meta.url)))
+  const absent = []
+  assert.deepEqual(buildChannels(shanghai, DEFAULT_CHANNEL_IDS, absent).map(c => c.name), ['都市剧场', '东方财经', '生活时尚'])
+  assert.deepEqual(absent, ['219', '222', '225', '226'])
+  const fetchWith = payload => async url => response(url.includes('client-id-by-region') ? { clientID: 'test' } : payload)
+  const result = await module.fetch({}, { fetchImpl: fetchWith(shanghai) })
+  assert.equal(result.groups[0].dataList.length, 3)
+  assert.deepEqual(result.meta.skipped, ['219', '222', '225', '226'])
+  assert.deepEqual(result.meta.warnings, ['这台服务器拿到的官方目录里没有多彩文体4K、动漫秀场、乐游、法治天地（百视通按地区下发频道），已跳过'])
+  const stopped = structuredClone(shanghai)
+  stopped.flatMap(g => g.items).filter(c => c.id === 230).forEach(c => { c.enabled = 0 })
+  assert.deepEqual((await module.fetch({}, { fetchImpl: fetchWith(stopped) })).meta.warnings.at(-1), '官方目录已停用 1 个选中频道')
+  await assert.rejects(module.fetch({ channels: '219\n222' }, { fetchImpl: fetchWith(shanghai) }), /没有已选择的频道/)
+  await assert.rejects(module.fetch({}, { fetchImpl: fetchWith([]) }), /没有已选择的频道/)
+  assert.equal((await module.fetch({}, { fetchImpl: fetchWith(catalog) })).meta.warnings.length, 0)
 });
 await check('媒体与分片锁定同一 CDN、频道、签名目录，拒绝变成加密/点播/子清单', () => {
   const url = stream('A')
   assert.equal(validateManifest(manifest(10), url), manifest(10))
   for (const raw of ['http://127.0.0.1/a.ts', stream('B'), url.replace('hxjchd', 'cctv1hd'), url.replace('fjnetv51', 'evil'), url.replace('http:', 'file:')]) assert.throws(() => mediaUrl(raw, url))
+  // 上海版目录的播放节点
+  const dongfang = url.replace('fjnetv51.live', 'dongfang5g-pc-v52-live').replace('hxjchd', 'dsjchd')
+  assert.equal(mediaUrl(dongfang), dongfang)
+  assert.equal(validateManifest(manifest(10), dongfang), manifest(10))
+  for (const raw of [dongfang.replace('dongfang5g-pc-v52-live', 'dongfang5g-pc-v52-live.evil'), dongfang.replace('.bestvcdn.com.cn', '.bestvcdn.com.cn.evil.test')]) assert.throws(() => mediaUrl(raw))
   for (const text of [manifest(1) + '#EXT-X-ENDLIST', manifest(1) + '#EXT-X-KEY:METHOD=AES-128,URI="key"', '#EXTM3U\n#EXT-X-STREAM-INF:BANDWIDTH=1\na.m3u8', manifest(1).replace('2026102922/1.ts', 'http://evil.test/a.ts')]) assert.throws(() => validateManifest(text, url))
 });
 await check('并发只取一次票、每次读实时清单；两分钟换播放票、七分钟换 clientID', async () => {

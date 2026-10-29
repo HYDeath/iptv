@@ -1005,7 +1005,6 @@ try {
         ...modules.filter(module => module.category === 'overseas').map(module => module.id),
         ...modules.filter(module => module.category === 'institution').map(module => module.id),
         'shandong-counties',
-        'bestv-fj', // 用户指定：福建百视通备用模块默认关闭
         ...modules.filter(module => module.id.startsWith('guangdianyun-')).map(module => module.id),
       ].sort(),
     )
@@ -1069,7 +1068,7 @@ try {
       '用户明确保存的关闭态不能被默认值覆盖')
   })
 
-  check('★ 百视通备用、海外频道、高校与场馆、澳门、山东市县、市县台默认关闭，用户打开后保持打开；没点过的开关不落盘', () => {
+  check('★ 海外频道、高校与场馆、澳门、山东市县、市县台默认关闭，用户打开后保持打开；没点过的开关不落盘', () => {
     const optIn = listModules().filter(module => module.defaultEnabled === false).map(module => module.id)
     const gdy = optIn.filter(id => id.startsWith('guangdianyun-'))
     assert.ok(gdy.length >= 20, '市县台各省模块都默认关闭')
@@ -1077,8 +1076,8 @@ try {
     const inst = optIn.filter(id => id.startsWith('inst-'))
     assert.equal(inst.length, 25, '高校与场馆 25 个来源都默认关闭')
     assert.deepEqual(optIn.filter(id => !id.startsWith('guangdianyun-') && !id.startsWith('inst-')).sort(),
-      ['bestv-fj', 'overseas', 'shandong-counties', 'tdm'],
-      '默认关的包括百视通备用模块、海外两个、山东市县、市县台各省和高校与场馆')
+      ['overseas', 'shandong-counties', 'tdm'],
+      '默认关的只有海外两个、山东市县、市县台各省和高校与场馆；新增要想清楚（百视通 v4.53.1 起默认开）')
     const manager = newManager(undefined, { modules: {}, masterSwitchRetired: true })
     for (const id of optIn) assert.equal(manager.isModuleEnabled(getModule(id)), false, id)
     manager.setModuleEnabled('overseas', true)

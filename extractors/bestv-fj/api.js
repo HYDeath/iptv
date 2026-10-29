@@ -16,7 +16,7 @@ export function officialLogo(raw) {
       && !url.username && !url.password && !url.port && /^\/images\/[\w/.-]+\.(png|jpe?g)$/i.test(url.pathname) ? url.href : ''
   } catch { return '' }
 }
-export function buildChannels(payload, ids) {
+export function buildChannels(payload, ids, absent = []) {
   if (!Array.isArray(payload) || payload.some(g => !Array.isArray(g?.items))) throw new Error('官方频道目录结构已变化')
   const rows = payload.flatMap(group => group.items)
   const output = []
@@ -24,6 +24,9 @@ export function buildChannels(payload, ids) {
     // 官方把东南卫视同时列在「福建」「卫视」；相同元数据合并，互相矛盾的目录仍失败。
     const matches = [...new Map(rows.filter(row => String(row.id) === id)
       .map(row => [JSON.stringify([row.id, row.name, row.icon, row.enabled, row.mode, row.audio]), row])).values()]
+    // 目录按访问地区下发：上海移动等出口拿到的版本没有多彩文体4K 等台，用那份 clientID 也取不到地址。
+    // 只跳过这几路，别让其余频道跟着失败。
+    if (!matches.length) { absent.push(id); continue }
     if (matches.length !== 1) throw new Error(`官方目录未唯一列出频道 ${id}`)
     const row = matches[0]
     if (row.enabled !== 1 || row.mode !== 'live' || row.audio !== 0) continue
@@ -38,20 +41,31 @@ export function buildChannels(payload, ids) {
 export async function fetchChannels(config, ctx = {}) {
   const api = createApiClient({ fetchImpl: ctx.fetchImpl || proxyAwareFetch, timeoutMs: ctx.timeoutMs || 12000 })
   const ids = selectedIds(config)
-  const channels = buildChannels(await api.request('/tvs'), ids)
-  if (!channels.length) throw new Error('已选择的频道在官方目录中均已停用')
+  const absent = []
+  const channels = buildChannels(await api.request('/tvs'), ids, absent)
+  if (!channels.length) {
+    throw new Error(absent.length === ids.length ? '这台服务器拿到的官方目录里没有已选择的频道（百视通按地区下发频道）' : '已选择的频道在官方目录中均已停用')
+  }
   const missing = ids.filter(id => !channels.some(c => c.deferredRef === refOf(id)))
-  return { groups: [{ name: GROUP, dataList: channels }], meta: { skipped: missing, warnings: missing.length ? [`官方目录已停用 ${missing.length} 个选中频道`] : [] } }
+  const stopped = missing.filter(id => !absent.includes(id))
+  const names = absent.map(id => CHANNELS.find(c => c.id === id).name)
+  const warnings = []
+  if (absent.length) {
+    warnings.push(`这台服务器拿到的官方目录里没有${names.slice(0, 6).join('、')}${names.length > 6 ? ` 等 ${names.length} 个频道` : ''}（百视通按地区下发频道），已跳过`)
+  }
+  if (stopped.length) warnings.push(`官方目录已停用 ${stopped.length} 个选中频道`)
+  return { groups: [{ name: GROUP, dataList: channels }], meta: { skipped: missing, warnings } }
 }
 
 /** CDN 必须处于当前频道的签名目录内；绝不把 API 凭据发给媒体主机。 */
 export function mediaUrl(raw, base) {
   let url
   try { url = new URL(String(raw)) } catch { throw new Error('媒体地址无效') }
-  if (!['http:', 'https:'].includes(url.protocol) || !/^fjnetv\d+\.live\.bestvcdn\.com\.cn$/.test(url.hostname)
+  // 上海版目录的 clientID 拿到的是 dongfang5g-pc-v52-live 节点，路径和清单格式与福建节点相同（2026-10-29 实测）
+  if (!['http:', 'https:'].includes(url.protocol) || !/^(?:fjnetv\d+\.live|dongfang5g-pc-v\d+-live)\.bestvcdn\.com\.cn$/.test(url.hostname)
       || url.username || url.password || url.port || url.hash
       || !/^\/[A-Za-z0-9=_-]{32,2048}\/live\/program\/live\/[a-zA-Z0-9_-]+\/\d+\/(?:mnf\.m3u8|\d{10}\/\d+\.ts)$/.test(url.pathname)) {
-    throw new Error('媒体地址不在福建百视通官方直播目录')
+    throw new Error('媒体地址不在百视通官方直播目录')
   }
   if (base) {
     const origin = new URL(base)
