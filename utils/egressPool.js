@@ -13,6 +13,15 @@ export function usesCctvEgress(raw) {
   }
 }
 
+export function usesMiguEgress(raw) {
+  try {
+    const host = new URL(String(raw)).hostname.toLowerCase()
+    return host === 'miguvideo.com' || host.endsWith('.miguvideo.com')
+  } catch {
+    return false
+  }
+}
+
 /**
  * addresses 按 1 号、2 号、3 号排列。
  * 当前出口被拒后，先按顺序探测更早的出口，第一个恢复的就切回去；都没恢复才启用下一个。
@@ -41,10 +50,10 @@ export function createEgressPool({
 
   const label = index => `${index + 1} 号 ${list[index]}`
 
-  async function probeEarlier(before) {
+  async function probeEarlier(before, check) {
     for (let i = 0; i < before; i++) {
       log(`探测更早的出口 ${label(i)}`)
-      if (await probe(list[i])) {
+      if (await check(list[i])) {
         active = i
         quietUntil = 0
         changed()
@@ -81,7 +90,7 @@ export function createEgressPool({
       addresses: [...list],
     }),
     beforeRequest(url) {
-      if (!list.length || !usesCctvEgress(url)) return Promise.resolve({ bypass: true })
+      if (!list.length || (!usesCctvEgress(url) && !usesMiguEgress(url))) return Promise.resolve({ bypass: true })
       return lock(async () => {
         const t = now()
         if (quietUntil && t < quietUntil) return { silent: true, until: quietUntil }
@@ -92,13 +101,14 @@ export function createEgressPool({
         return { address: list[active] }
       })
     },
-    reportBlocked(address) {
+    reportBlocked(address, customProbe) {
       if (!list.length) return Promise.resolve()
+      const check = customProbe || probe
       return lock(async () => {
         const index = list.indexOf(address)
         if (index < 0 || index !== active || (quietUntil && now() < quietUntil)) return
         log(`出口 ${label(index)} 被上游拒绝`)
-        if (await probeEarlier(index)) return
+        if (await probeEarlier(index, check)) return
         if (index + 1 < list.length) {
           active = index + 1
           changed()
@@ -107,7 +117,7 @@ export function createEgressPool({
         }
         quietUntil = now() + quietMs
         changed()
-        log(`出口全部被拒，${quietMs / 3600000} 小时内不再请求央视频`)
+        log(`出口全部被拒，${quietMs / 3600000} 小时内不再请求被封的上游`)
       })
     },
   }

@@ -4,7 +4,7 @@
  * 运行： node scripts/test-egress-pool.mjs
  */
 import assert from 'node:assert/strict'
-import { createEgressPool, usesCctvEgress } from '../utils/egressPool.js'
+import { createEgressPool, usesCctvEgress, usesMiguEgress } from '../utils/egressPool.js'
 
 const HOUR = 60 * 60 * 1000
 let passed = 0
@@ -123,6 +123,23 @@ await check('过期出口的失败报告不再改当前出口', async () => {
   await pool.reportBlocked('1.1.1.1')
   await pool.reportBlocked('1.1.1.1')
   assert.equal(pool.snapshot().address, '2.2.2.2')
+})
+
+await check('咪咕域名也进入同一出口池', async () => {
+  assert.equal(usesMiguEgress('https://play.miguvideo.com/playurl'), true)
+  const pool = createEgressPool({ addresses: ['1.1.1.1', '2.2.2.2'] })
+  assert.equal((await pool.beforeRequest('https://play.miguvideo.com/playurl')).address, '1.1.1.1')
+})
+
+await check('咪咕失败用自己的探测，央视频探测说恢复也不会切回去', async () => {
+  const pool = createEgressPool({
+    addresses: ['1.1.1.1', '2.2.2.2'],
+    probe: async () => true,
+  })
+  await pool.reportBlocked('1.1.1.1')
+  await pool.reportBlocked('2.2.2.2', async () => false)
+  assert.equal(pool.snapshot().address, '2.2.2.2')
+  assert.ok(pool.snapshot().quietUntil > 0)
 })
 
 console.log(`\n${passed} 项通过`)

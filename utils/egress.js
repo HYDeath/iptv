@@ -1,8 +1,9 @@
 import { readFileSync, writeFileSync } from 'node:fs'
+import https from 'node:https'
 import { Agent, fetch as undiciFetch } from 'undici'
 import { printYellow } from './colorOut.js'
 import { dataPath } from './paths.js'
-import { BLOCK_STATUSES, createEgressPool, QUIET_MS, usesCctvEgress } from './egressPool.js'
+import { BLOCK_STATUSES, createEgressPool, QUIET_MS, usesCctvEgress, usesMiguEgress } from './egressPool.js'
 
 const agents = new Map()
 const boundResponses = new WeakMap()
@@ -74,7 +75,51 @@ if (pool.enabled()) {
   const snap = pool.snapshot()
   const listed = snap.addresses.map((address, index) => `${index + 1}号 ${address}`).join('，')
   const quiet = snap.quietUntil > Date.now() ? `，静默到 ${new Date(snap.quietUntil).toLocaleString('zh-CN', { timeZone: 'Asia/Shanghai' })}` : ''
-  printYellow(`[出口] 央视频按顺序使用 ${listed}；当前 ${snap.active + 1}号 ${snap.address}${quiet}；全部被拒后静默 ${config.quietMs / 3600000} 小时再探测`)
+  printYellow(`[出口] 央视频和咪咕按顺序使用 ${listed}；当前 ${snap.active + 1}号 ${snap.address}${quiet}；全部被拒后静默 ${config.quietMs / 3600000} 小时再探测`)
+}
+
+const httpsAgents = new Map()
+
+function httpsAgentFor(address) {
+  let agent = httpsAgents.get(address)
+  if (!agent) {
+    agent = new https.Agent({ keepAlive: true, family: 4, localAddress: address })
+    httpsAgents.set(address, agent)
+    printYellow(`[出口] 咪咕已绑定套接字到 ${address}`)
+  }
+  return agent
+}
+
+function probeMigu(address) {
+  return new Promise(resolve => {
+    const req = https.get({
+      host: 'play.miguvideo.com',
+      path: '/',
+      family: 4,
+      localAddress: address,
+      timeout: 4000,
+      headers: { 'User-Agent': 'Mozilla/5.0' },
+    }, response => {
+      response.resume()
+      resolve(response.statusCode > 0 && response.statusCode < 500)
+    })
+    req.on('timeout', () => {
+      req.destroy()
+      resolve(false)
+    })
+    req.on('error', () => resolve(false))
+  })
+}
+
+export async function bindMiguFetch(url) {
+  if (!usesMiguEgress(url) || !pool.enabled()) return { bypass: true }
+  const decision = await pool.beforeRequest(url)
+  if (decision.silent || decision.bypass || !decision.address) return decision
+  return { address: decision.address, agent: httpsAgentFor(decision.address) }
+}
+
+export function noteMiguFailure(address) {
+  return pool.reportBlocked(address, probeMigu)
 }
 
 export function rememberEgress(response, address) {

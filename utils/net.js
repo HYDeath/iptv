@@ -1,6 +1,7 @@
 import os from "os"
 import fetch from 'node-fetch'
 import { printRed } from "./colorOut.js";
+import { bindMiguFetch, noteMiguFailure } from "./egress.js";
 
 function getLocalIPv(ver = 4) {
   const ips = []
@@ -31,22 +32,24 @@ async function fetchUrl(url, opts = {}, timeout = 6000) {
     timedOut = true;
     controller.abort()
   }, timeout);
-  // opts["signal"] = controller.signal
+  const bound = await bindMiguFetch(url)
+  if (bound.silent) {
+    clearTimeout(timeoutId)
+    return undefined
+  }
   const res = await fetch(url, {
     ...opts,
-    signal: controller.signal
+    signal: controller.signal,
+    ...(bound.agent ? { agent: bound.agent } : {}),
   })
     .then(r => {
       clearTimeout(timeoutId);
       return r.json()
     })
-    .catch(err => {
+    .catch(async err => {
       clearTimeout(timeoutId);
-      if (timedOut) {
-        // 超时只打印警告，不打印错误详情
-        // printYellow(`请求超时: ${url.substring(0, 80)}...`)
-      } else {
-        // 网络类错误打一行摘要即可（ETIMEDOUT/ECONNRESET 等），完整堆栈只会刷屏吓人（用户日志截图反馈）
+      if (bound.address) await noteMiguFailure(bound.address)
+      if (!timedOut) {
         printRed(`请求失败 [${err?.code || err?.name || 'ERROR'}]: ${String(url).substring(0, 80)}`)
       }
     })
